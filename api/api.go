@@ -5,12 +5,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"html/template"
+	"github.com/stnokott/r6api/api/types/ranked"
+	"github.com/stnokott/r6api/api/types/stats"
 	"net/http"
 	"net/url"
 
 	"github.com/rs/zerolog"
-	"github.com/stnokott/r6api/api/types"
 )
 
 type UbiAPI struct {
@@ -112,7 +112,7 @@ type ubiProfileResp struct {
 	} `json:"profiles"`
 }
 
-func (a *UbiAPI) ResolveUser(username string) (*types.Profile, error) {
+func (a *UbiAPI) ResolveUser(username string) (*stats.Profile, error) {
 	if err := a.checkAuthentication(); err != nil {
 		return nil, err
 	}
@@ -134,25 +134,14 @@ func (a *UbiAPI) ResolveUser(username string) (*types.Profile, error) {
 	a.logger.Debug().
 		Str("username", username).
 		Msgf("resolved to profile ID %s", resolvedProfileID)
-	return &types.Profile{
+	return &stats.Profile{
 		Name:      resolvedName,
 		ProfileID: resolvedProfileID,
 	}, nil
 }
 
-// TODO: test view=seasonal
-var ubiStatsURLTemplate = template.Must(template.New("statsURL").Parse(
-	"https://prod.datadev.ubisoft.com/v1/profiles/{{.ProfileID}}/playerstats?spaceId=5172a557-50b5-4665-b7db-e3f2e8c5041d&view=current&aggregation={{.Aggregation}}&gameMode=ranked,unranked,casual&platform=PC&teamRole=attacker,defender&seasons={{.Season}}",
-))
-
-type ubiStatsURLParams struct {
-	ProfileID   string
-	Aggregation string
-	Season      string
-}
-
-func (a *UbiAPI) GetStats(profile *types.Profile, season string, dst types.StatsLoader) error {
-	args := ubiStatsURLParams{
+func (a *UbiAPI) GetStats(profile *stats.Profile, season string, dst stats.StatsLoader) error {
+	args := stats.UbiStatsURLParams{
 		ProfileID:   profile.ProfileID,
 		Aggregation: dst.AggregationType(),
 		Season:      season,
@@ -163,18 +152,45 @@ func (a *UbiAPI) GetStats(profile *types.Profile, season string, dst types.Stats
 		Str("season", season).
 		Msg("getting stats")
 	requestURLBytes := bytes.NewBuffer([]byte{})
-	if err := ubiStatsURLTemplate.Execute(requestURLBytes, args); err != nil {
+	if err := stats.UbiStatsURLTemplate.Execute(requestURLBytes, args); err != nil {
 		return err
 	}
 
-	resp := new(types.UbiStatsResponseJSON)
+	resp := new(stats.UbiStatsResponseJSON)
 	if err := a.requestAuthorized(requestURLBytes.String(), resp); err != nil {
 		return err
 	}
 
-	if err := types.LoadStats(resp, dst); err != nil {
+	if err := stats.LoadStats(resp, dst); err != nil {
 		return err
 	}
 	a.logger.Info().Msg("...done")
 	return nil
+}
+
+func (a *UbiAPI) GetRankedHistory(profile *stats.Profile, numSeasons int8) (ranked.SkillHistory, error) {
+	args := ranked.UbiSkillURLParams{
+		ProfileID:      profile.ProfileID,
+		NumPastSeasons: numSeasons,
+	}
+	a.logger.Info().
+		Str("username", profile.Name).
+		Int8("numSeasons", numSeasons).
+		Msg("getting ranked history")
+	requestURLBytes := bytes.NewBuffer([]byte{})
+	if err := ranked.UbiSkillURLTemplate.Execute(requestURLBytes, args); err != nil {
+		return nil, err
+	}
+
+	resp := new(ranked.UbiSkillRecordsJSON)
+	if err := a.requestAuthorized(requestURLBytes.String(), resp); err != nil {
+		return nil, err
+	}
+
+	result, err := ranked.GetSkillHistory(resp)
+	if err != nil {
+		return nil, err
+	}
+	a.logger.Info().Msg("...done")
+	return result, nil
 }

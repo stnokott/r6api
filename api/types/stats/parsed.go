@@ -1,4 +1,4 @@
-package mapped
+package stats
 
 import (
 	"encoding/json"
