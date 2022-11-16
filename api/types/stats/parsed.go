@@ -1,4 +1,4 @@
-package types
+package mapped
 
 import (
 	"encoding/json"
