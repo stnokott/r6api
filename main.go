@@ -2,12 +2,12 @@ package main
 
 import (
 	"flag"
+	"github.com/stnokott/r6api/api/types/stats"
 	"os"
 	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/stnokott/r6api/api"
-	"github.com/stnokott/r6api/api/types"
 )
 
 func main() {
@@ -29,12 +29,12 @@ func main() {
 		logger.Fatal().Err(err).Msg("error resolving user")
 	}
 
-	summarizedStats := new(types.SummarizedStats)
+	summarizedStats := new(stats.SummarizedStats)
 	if err = a.GetStats(profile, "Y7S3", summarizedStats); err != nil {
 		logger.Fatal().Err(err).Msgf("error getting summarized stats for <%s>", profile.Name)
 	}
 
-	operatorStats := new(types.OperatorStats)
+	operatorStats := new(stats.OperatorStats)
 	if err = a.GetStats(profile, "Y7S3", operatorStats); err != nil {
 		logger.Fatal().Err(err).Msgf("error getting operator stats for <%s>", profile.Name)
 	}
@@ -48,7 +48,7 @@ func main() {
 		}
 	}
 
-	mapStats := new(types.MapStats)
+	mapStats := new(stats.MapStats)
 	if err = a.GetStats(profile, "Y7S3", mapStats); err != nil {
 		logger.Fatal().Err(err).Msgf("error getting map stats for <%s>", profile.Name)
 	}
@@ -62,14 +62,14 @@ func main() {
 		}
 	}
 
-	weaponStats := new(types.WeaponStats)
+	weaponStats := new(stats.WeaponStats)
 	if err = a.GetStats(profile, "Y7S3", weaponStats); err != nil {
 		logger.Fatal().Err(err).Msgf("error getting weapon stats for <%s>", profile.Name)
 	}
 	if weaponStats.Casual != nil {
 		primaryStats := weaponStats.Casual.Attack.Primary
-		for weaponType, stats := range primaryStats {
-			for _, stat := range stats {
+		for weaponType, pStats := range primaryStats {
+			for _, stat := range pStats {
 				logger.Info().
 					Str("role", "attack").
 					Str("type", weaponType).
@@ -79,4 +79,16 @@ func main() {
 			}
 		}
 	}
+
+	rankedHistory, err := a.GetRankedHistory(profile, 8)
+	if err != nil {
+		logger.Fatal().Err(err).Msgf("error getting weapon stats for <%s>", profile.Name)
+	}
+	season := rankedHistory[6]
+	logger.Info().
+		Int("seasonID", season.SeasonID).
+		Int("wins", season.Wins).
+		Int("losses", season.Losses).
+		Int("mmr", season.MMR).
+		Msg("")
 }

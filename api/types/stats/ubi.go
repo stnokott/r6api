@@ -1,9 +1,22 @@
-package mapped
+package stats
 
 import (
 	"encoding/json"
+	"text/template"
 	"time"
 )
+
+// TODO: test view=seasonal
+
+var UbiStatsURLTemplate = template.Must(template.New("statsURL").Parse(
+	"https://prod.datadev.ubisoft.com/v1/profiles/{{urlquery .ProfileID}}/playerstats?spaceId=5172a557-50b5-4665-b7db-e3f2e8c5041d&view=current&aggregation={{urlquery .Aggregation}}&gameMode=ranked,unranked,casual&platform=PC&teamRole=attacker,defender&seasons={{urlquery .Season}}",
+))
+
+type UbiStatsURLParams struct {
+	ProfileID   string
+	Aggregation string
+	Season      string
+}
 
 const ubiDateFormat = "20060102"
 
