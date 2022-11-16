@@ -42,9 +42,27 @@ func main() {
 		for _, operator := range operatorStats.Casual.Attack {
 			logger.Info().
 				Str("role", "attack").
-				Int("kills", operator.Kills).
 				Int("deaths", operator.Deaths).
+				Int("kills", operator.Kills).
 				Msg(operator.OperatorName)
+		}
+	}
+
+	weaponStats := new(types.WeaponStats)
+	if err = a.GetStats(profile, "Y7S3", weaponStats); err != nil {
+		logger.Fatal().Err(err).Msgf("error getting operator stats for <%s>", profile.Name)
+	}
+	if weaponStats.Casual != nil {
+		primaryStats := weaponStats.Casual.Attack.Primary
+		for weaponType, stats := range primaryStats {
+			for _, stat := range stats {
+				logger.Info().
+					Str("role", "attack").
+					Str("type", weaponType).
+					Int("kills", stat.Kills).
+					Float64("headshotperc", stat.HeadshotPercentage).
+					Msg(stat.WeaponName)
+			}
 		}
 	}
 }
