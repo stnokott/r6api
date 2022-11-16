@@ -81,29 +81,41 @@ func (s *SummarizedStats) Load(metadata statMetadata, data *ubiGameModesJSON) er
 }
 
 type OperatorStats struct {
-	statMetadata
-	Casual   *operatorTeamRoleStats
-	Unranked *operatorTeamRoleStats
-	Ranked   *operatorTeamRoleStats
-}
-
-type operatorTeamRoleStats struct {
-	Attack  []operatorStats
-	Defence []operatorStats
-}
-
-type operatorStats struct {
-	OperatorName string
-	genericStats
+	abstractNamedStats
 }
 
 func (s *OperatorStats) AggregationType() string {
 	return "operators"
 }
 
-func (s *OperatorStats) Load(metadata statMetadata, data *ubiGameModesJSON) error {
+type MapStats struct {
+	abstractNamedStats
+}
+
+func (s *MapStats) AggregationType() string {
+	return "maps"
+}
+
+type abstractNamedStats struct {
+	statMetadata
+	Casual   *namedTeamRoleStats
+	Unranked *namedTeamRoleStats
+	Ranked   *namedTeamRoleStats
+}
+
+type namedTeamRoleStats struct {
+	Attack  []namedStats
+	Defence []namedStats
+}
+
+type namedStats struct {
+	Name string
+	genericStats
+}
+
+func (s *abstractNamedStats) Load(metadata statMetadata, data *ubiGameModesJSON) error {
 	s.statMetadata = metadata
-	fields := []**operatorTeamRoleStats{&s.Casual, &s.Unranked, &s.Ranked}
+	fields := []**namedTeamRoleStats{&s.Casual, &s.Unranked, &s.Ranked}
 	jsons := []*ubiTeamRolesJSON{data.StatsCasual, data.StatsUnranked, data.StatsRanked}
 	for i, field := range fields {
 		if jsons[i] != nil {
@@ -114,8 +126,8 @@ func (s *OperatorStats) Load(metadata statMetadata, data *ubiGameModesJSON) erro
 			if err := json.Unmarshal(jsons[i].TeamRoles.Defence, &defData); err != nil {
 				return err
 			}
-			atk := make([]operatorStats, len(atkData))
-			def := make([]operatorStats, len(defData))
+			atk := make([]namedStats, len(atkData))
+			def := make([]namedStats, len(defData))
 			for j := range atk {
 				atk[j] = *newOperatorTeamRoleStats(atkData[j])
 			}
@@ -123,7 +135,7 @@ func (s *OperatorStats) Load(metadata statMetadata, data *ubiGameModesJSON) erro
 				def[j] = *newOperatorTeamRoleStats(defData[j])
 			}
 
-			*field = &operatorTeamRoleStats{
+			*field = &namedTeamRoleStats{
 				Attack:  atk,
 				Defence: def,
 			}
@@ -132,15 +144,15 @@ func (s *OperatorStats) Load(metadata statMetadata, data *ubiGameModesJSON) erro
 	return nil
 }
 
-func newOperatorTeamRoleStats(v ubiDetailedStatsJSON) *operatorStats {
+func newOperatorTeamRoleStats(v ubiDetailedStatsJSON) *namedStats {
 	var name string
 	if v.StatsDetail == nil {
 		name = "n/a"
 	} else {
 		name = *v.StatsDetail
 	}
-	return &operatorStats{
-		OperatorName: name,
+	return &namedStats{
+		Name:         name,
 		genericStats: *newGenericStats(v),
 	}
 }
@@ -153,12 +165,12 @@ type WeaponStats struct {
 }
 
 type weaponTeamRoleStats struct {
-	Attack weaponSlotStats
+	Attack  weaponSlotStats
 	Defence weaponSlotStats
 }
 
 type weaponSlotStats struct {
-	Primary weaponTypeMap
+	Primary   weaponTypeMap
 	Secondary weaponTypeMap
 }
 
@@ -193,7 +205,7 @@ func (s *WeaponStats) Load(metadata statMetadata, data *ubiGameModesJSON) error 
 			defSecondary := newWeaponTeamRoleStats(defData.WeaponSlots.Secondary)
 
 			*field = &weaponTeamRoleStats{
-				Attack:  weaponSlotStats{
+				Attack: weaponSlotStats{
 					Primary:   atkPrimary,
 					Secondary: atkSecondary,
 				},
@@ -213,7 +225,7 @@ func newWeaponTeamRoleStats(v ubiWeaponTypesJSON) weaponTypeMap {
 		weapons := make([]weaponStats, len(weaponType.Weapons))
 		for i, weapon := range weaponType.Weapons {
 			weapons[i] = weaponStats{
-				WeaponName:   weapon.WeaponName,
+				WeaponName: weapon.WeaponName,
 				reducedStats: reducedStats{
 					Headshots:           weapon.Headshots,
 					HeadshotPercentage:  weapon.HeadshotPercentage,
@@ -232,43 +244,43 @@ func newWeaponTeamRoleStats(v ubiWeaponTypesJSON) weaponTypeMap {
 }
 
 type reducedStats struct {
-	Headshots              int
-	HeadshotPercentage     float64
-	Kills                  int
-	RoundsPlayed           int
-	RoundsWon              int
-	RoundsLost             int
-	RoundsWithKill         float64
-	RoundsWithMultikill    float64
+	Headshots           int
+	HeadshotPercentage  float64
+	Kills               int
+	RoundsPlayed        int
+	RoundsWon           int
+	RoundsLost          int
+	RoundsWithKill      float64
+	RoundsWithMultikill float64
 }
 
 type genericStats struct {
 	reducedStats
-	MatchesPlayed          int
-	MatchesWon             int
-	MatchesLost            int
-	MinutesPlayed          int
-	Assists                int
-	Deaths                 int
-	KillsPerRound          float64
-	MeleeKills             int
-	TeamKills              int
-	OpeningDeaths          int
-	OpeningDeathTrades     int
-	OpeningKills           int
-	OpeningKillTrades      int
-	Trades                 int
-	Revives                int
-	RoundsSurvived         float64
-	RoundsWithAce          float64
-	RoundsWithClutch       float64
-	RoundsWithKOST         float64
-	RoundsWithOpeningDeath float64
-	RoundsWithOpeningKill  float64
-	DistancePerRound       float64
-	DistanceTotal          float64
-	TimeAlivePerMatch      float64
-	TimeDeadPerMatch       float64
+	MatchesPlayed        int
+	MatchesWon           int
+	MatchesLost          int
+	MinutesPlayed        int
+	Assists              int
+	Deaths               int
+	KillsPerRound        float64
+	MeleeKills           int
+	TeamKills            int
+	EntryDeaths          int
+	EntryDeathTrades     int
+	EntryKills           int
+	EntryKillTrades      int
+	Trades               int
+	Revives              int
+	RoundsSurvived       float64
+	RoundsWithAce        float64
+	RoundsWithClutch     float64
+	RoundsWithKOST       float64
+	RoundsWithEntryDeath float64
+	RoundsWithEntryKill  float64
+	DistancePerRound     float64
+	DistanceTotal        float64
+	TimeAlivePerMatch    float64
+	TimeDeadPerMatch     float64
 }
 
 func newGenericStats(v ubiDetailedStatsJSON) *genericStats {
@@ -283,30 +295,30 @@ func newGenericStats(v ubiDetailedStatsJSON) *genericStats {
 			RoundsWithKill:      v.RoundsWithKill.Value,
 			RoundsWithMultikill: v.RoundsWithMultikill.Value,
 		},
-		MatchesPlayed:          v.MatchesPlayed,
-		MatchesWon:             v.MatchesWon,
-		MatchesLost:            v.MatchesLost,
-		MinutesPlayed:          v.MinutesPlayed,
-		Assists:                v.Assists,
-		Deaths:                 v.Deaths,
-		KillsPerRound:          v.KillsPerRound.Value,
-		MeleeKills:             v.MeleeKills,
-		TeamKills:              v.TeamKills,
-		OpeningDeaths:          v.OpeningDeaths,
-		OpeningDeathTrades:     v.OpeningDeathTrades,
-		OpeningKills:           v.OpeningKills,
-		OpeningKillTrades:      v.OpeningKillTrades,
-		Trades:                 v.Trades,
-		Revives:                v.Revives,
-		RoundsSurvived:         v.RoundsSurvived.Value,
-		RoundsWithAce:          v.RoundsWithAce.Value,
-		RoundsWithClutch:       v.RoundsWithClutch.Value,
-		RoundsWithKOST:         v.RoundsWithKOST.Value,
-		RoundsWithOpeningDeath: v.RoundsWithOpeningDeath.Value,
-		RoundsWithOpeningKill:  v.RoundsWithOpeningKill.Value,
-		DistancePerRound:       v.DistancePerRound,
-		DistanceTotal:          v.DistanceTotal,
-		TimeAlivePerMatch:      v.TimeAlivePerMatch,
-		TimeDeadPerMatch:       v.TimeDeadPerMatch,
+		MatchesPlayed:        v.MatchesPlayed,
+		MatchesWon:           v.MatchesWon,
+		MatchesLost:          v.MatchesLost,
+		MinutesPlayed:        v.MinutesPlayed,
+		Assists:              v.Assists,
+		Deaths:               v.Deaths,
+		KillsPerRound:        v.KillsPerRound.Value,
+		MeleeKills:           v.MeleeKills,
+		TeamKills:            v.TeamKills,
+		EntryDeaths:          v.EntryDeaths,
+		EntryDeathTrades:     v.EntryDeathTrades,
+		EntryKills:           v.EntryKills,
+		EntryKillTrades:      v.EntryKillTrades,
+		Trades:               v.Trades,
+		Revives:              v.Revives,
+		RoundsSurvived:       v.RoundsSurvived.Value,
+		RoundsWithAce:        v.RoundsWithAce.Value,
+		RoundsWithClutch:     v.RoundsWithClutch.Value,
+		RoundsWithKOST:       v.RoundsWithKOST.Value,
+		RoundsWithEntryDeath: v.RoundsWithEntryDeath.Value,
+		RoundsWithEntryKill:  v.RoundsWithEntryKill.Value,
+		DistancePerRound:     v.DistancePerRound,
+		DistanceTotal:        v.DistanceTotal,
+		TimeAlivePerMatch:    v.TimeAlivePerMatch,
+		TimeDeadPerMatch:     v.TimeDeadPerMatch,
 	}
 }
