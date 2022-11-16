@@ -140,6 +140,7 @@ func (a *UbiAPI) ResolveUser(username string) (*types.Profile, error) {
 	}, nil
 }
 
+// TODO: test view=seasonal
 var ubiStatsURLTemplate = template.Must(template.New("statsURL").Parse(
 	"https://prod.datadev.ubisoft.com/v1/profiles/{{.ProfileID}}/playerstats?spaceId=5172a557-50b5-4665-b7db-e3f2e8c5041d&view=current&aggregation={{.Aggregation}}&gameMode=ranked,unranked,casual&platform=PC&teamRole=attacker,defender&seasons={{.Season}}",
 ))
@@ -174,6 +175,6 @@ func (a *UbiAPI) GetStats(profile *types.Profile, season string, dst types.Stats
 	if err := types.LoadStats(resp, dst); err != nil {
 		return err
 	}
-	a.logger.Info().Msg("stats retrieved")
+	a.logger.Info().Msg("...done")
 	return nil
 }
