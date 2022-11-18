@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -10,9 +9,9 @@ import (
 )
 
 type ubiErrResp struct {
-	Error     string `json:"error"`
-	ErrorCode string `json:"errorCode"`
-	Message   string `json:"message"`
+	Error     string      `json:"error"`
+	ErrorCode json.Number `json:"errorCode"`
+	Message   string      `json:"message"`
 }
 
 func request(r *http.Request, dst any) (err error) {
@@ -24,15 +23,15 @@ func request(r *http.Request, dst any) (err error) {
 		return
 	}
 
-	if resp.StatusCode != 200 {
-		return fmt.Errorf("unexpected status code %d", resp.StatusCode)
-	}
 	var data []byte
 	data, err = io.ReadAll(resp.Body)
 	if err != nil {
 		return
 	}
 	if err = checkForErrors(data); err != nil {
+		if resp.StatusCode != 200 {
+			err = errors.Wrapf(err, "unexpected status code %d", resp.StatusCode)
+		}
 		return
 	}
 	err = json.Unmarshal(data, dst)
@@ -44,7 +43,7 @@ func checkForErrors(data []byte) error {
 	if err := json.Unmarshal(data, &errData); err != nil {
 		return err
 	}
-	errs := []string{errData.Message, errData.Error, errData.ErrorCode}
+	errs := []string{errData.Message, errData.Error, errData.ErrorCode.String()}
 	for _, errContent := range errs {
 		if errContent != "" {
 			return errors.New(errContent)

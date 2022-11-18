@@ -2,6 +2,7 @@ package stats
 
 import (
 	"encoding/json"
+	"fmt"
 	"text/template"
 	"time"
 )
@@ -18,6 +19,148 @@ type UbiStatsURLParams struct {
 	Season      string
 }
 
+type ubiStatsResponseJSON struct {
+	StartDate ubiTime `json:"startDate"`
+	EndDate   ubiTime `json:"endDate"`
+	Platforms struct {
+		PC struct {
+			GameModes ubiGameModesJSON `json:"gameModes"`
+		} `json:"PC"`
+	} `json:"platforms"`
+}
+
+type ubiGameModesJSON struct {
+	StatsCasual   *ubiTypedGameModeJSON `json:"casual"`
+	StatsUnranked *ubiTypedGameModeJSON `json:"unranked"`
+	StatsRanked   *ubiTypedGameModeJSON `json:"ranked"`
+}
+
+/********************
+Game Mode Stats Types
+*********************/
+
+type gameModeStatsType string
+
+const (
+	typeTeamRoles       gameModeStatsType = "Team roles"
+	typeTeamRoleWeapons gameModeStatsType = "Team roles weapons"
+)
+
+type ubiGameModeStatsTypeJSON struct {
+	Type gameModeStatsType `json:"type"`
+}
+
+type ubiTypedGameModeJSON struct {
+	ubiGameModeStatsTypeJSON
+	Value any
+}
+
+func (u *ubiTypedGameModeJSON) UnmarshalJSON(data []byte) error {
+	var typed ubiGameModeStatsTypeJSON
+	if err := json.Unmarshal(data, &typed); err != nil {
+		return err
+	}
+
+	switch typed.Type {
+	case typeTeamRoles:
+		u.Value = new(ubiGameModeJSON)
+	case typeTeamRoleWeapons:
+		u.Value = new(ubiTeamRoleWeaponsJSON)
+	default:
+		return fmt.Errorf("encountered unknown game mode type: '%s'", typed.Type)
+	}
+	err := json.Unmarshal(data, u.Value)
+	u.Type = typed.Type
+	return err
+}
+
+/********************
+Team Roles Stats Types
+*********************/
+
+// ////////////
+// Team Roles
+// ////////////
+type ubiGameModeJSON struct {
+	TeamRoles struct {
+		Attack  []ubiTypedTeamRoleJSON `json:"attacker"`
+		Defence []ubiTypedTeamRoleJSON `json:"defender"`
+	} `json:"teamRoles"`
+}
+
+// TODO: remove if only one type
+
+type teamRoleStatsType string
+
+const (
+	typeGeneralized teamRoleStatsType = "Generalized"
+)
+
+type ubiTeamRoleStatsTypeJSON struct {
+	Type      teamRoleStatsType `json:"type"`
+	StatsType *string           `json:"statsType"`
+}
+
+type ubiTypedTeamRoleJSON struct {
+	ubiTeamRoleStatsTypeJSON
+	Value any
+}
+
+func (u *ubiTypedTeamRoleJSON) UnmarshalJSON(data []byte) error {
+	var typed ubiTeamRoleStatsTypeJSON
+	if err := json.Unmarshal(data, &typed); err != nil {
+		return err
+	}
+
+	switch typed.Type {
+	case typeGeneralized:
+		u.Value = new(ubiDetailedStatsJSON)
+	default:
+		return fmt.Errorf("encountered unknown team role type: '%s'", typed.Type)
+	}
+	err := json.Unmarshal(data, u.Value)
+	u.ubiTeamRoleStatsTypeJSON = typed
+	return err
+}
+
+// ///////////////////
+// Team Role Weapons
+// ///////////////////
+type ubiTeamRoleWeaponsJSON struct {
+	TeamRoles struct {
+		Attack  ubiWeaponSlotsJSON `json:"attacker"`
+		Defence ubiWeaponSlotsJSON `json:"defender"`
+	} `json:"teamRoles"`
+}
+
+type ubiWeaponSlotsJSON struct {
+	WeaponSlots struct {
+		Primary   ubiWeaponTypesJSON `json:"primaryWeapons"`
+		Secondary ubiWeaponTypesJSON `json:"secondaryWeapons"`
+	} `json:"weaponSlots"`
+}
+
+type ubiWeaponTypesJSON struct {
+	WeaponTypes []struct {
+		WeaponTypeName string `json:"weaponType"`
+		Weapons        []struct {
+			WeaponName string `json:"weaponName"`
+			ubiWeaponStatsJSON
+		} `json:"weapons"`
+	} `json:"weaponTypes"`
+}
+
+type ubiWeaponStatsJSON struct {
+	ubiReducedStatsJSON
+	RoundsWithKill      float64 `json:"roundsWithAKill"`
+	RoundsWithMultikill float64 `json:"roundsWithMultikill"`
+	HeadshotPercentage  float64 `json:"headshotAccuracy"`
+}
+
+/***************
+Generic structs
+****************/
+
 const ubiDateFormat = "20060102"
 
 type ubiTime struct {
@@ -27,29 +170,6 @@ type ubiTime struct {
 func (t *ubiTime) UnmarshalJSON(b []byte) (err error) {
 	t.Time, err = time.Parse(ubiDateFormat, string(b))
 	return
-}
-
-type UbiStatsResponseJSON struct {
-	StartDate ubiTime `json:"startDate"`
-	EndDate   ubiTime `json:"endDate"`
-	Platforms struct {
-		PC struct {
-			GameModes *ubiGameModesJSON `json:"gameModes"`
-		} `json:"PC"`
-	} `json:"platforms"`
-}
-
-type ubiGameModesJSON struct {
-	StatsCasual   *ubiTeamRolesJSON `json:"casual"`
-	StatsUnranked *ubiTeamRolesJSON `json:"unranked"`
-	StatsRanked   *ubiTeamRolesJSON `json:"ranked"`
-}
-
-type ubiTeamRolesJSON struct {
-	TeamRoles struct {
-		Attack  json.RawMessage `json:"attacker"`
-		Defence json.RawMessage `json:"defender"`
-	} `json:"teamRoles"`
 }
 
 type ubiJSONFloat struct {
@@ -95,28 +215,4 @@ type ubiDetailedStatsJSON struct {
 	DistanceTotal        float64      `json:"distanceTravelled"`
 	TimeAlivePerMatch    float64      `json:"timeAlivePerMatch"`
 	TimeDeadPerMatch     float64      `json:"timeDeadPerMatch"`
-}
-
-type ubiWeaponSlotsJSON struct {
-	WeaponSlots struct {
-		Primary   ubiWeaponTypesJSON `json:"primaryWeapons"`
-		Secondary ubiWeaponTypesJSON `json:"secondaryWeapons"`
-	} `json:"weaponSlots"`
-}
-
-type ubiWeaponTypesJSON struct {
-	WeaponTypes []struct {
-		WeaponTypeName string `json:"weaponType"`
-		Weapons        []struct {
-			WeaponName string `json:"weaponName"`
-			ubiWeaponStatsJSON
-		} `json:"weapons"`
-	} `json:"weaponTypes"`
-}
-
-type ubiWeaponStatsJSON struct {
-	ubiReducedStatsJSON
-	RoundsWithKill      float64 `json:"roundsWithAKill"`
-	RoundsWithMultikill float64 `json:"roundsWithMultikill"`
-	HeadshotPercentage  float64 `json:"headshotAccuracy"`
 }
