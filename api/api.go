@@ -5,13 +5,28 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/stnokott/r6api/api/types/ranked"
-	"github.com/stnokott/r6api/api/types/stats"
 	"net/http"
 	"net/url"
 
+	"github.com/stnokott/r6api/api/types/ranked"
+	"github.com/stnokott/r6api/api/types/stats"
+
 	"github.com/rs/zerolog"
 )
+
+type Profile struct {
+	Name      string
+	ProfileID string
+}
+
+func (p *Profile) ProfilePicURL() string {
+	return fmt.Sprintf("https://ubisoft-avatars.akamaized.net/%s/default_146_146.png?appId=3587dcbb-7f81-457c-9781-0e3f29f6f56a", p.ProfileID)
+}
+
+func (p *Profile) MarshalZerologObject(e *zerolog.Event) {
+	e.Str("username", p.Name).Str("profileID", p.ProfileID).Send()
+	e.Discard()
+}
 
 type UbiAPI struct {
 	authCredentials string
@@ -99,7 +114,8 @@ func (a *UbiAPI) requestAuthorized(url string, dst any) (err error) {
 	req.Header.Add("Expiration", a.ticket.Expiration.Format("2006-01-02T15:04:05Z"))
 	req.Header.Add("Authorization", "ubi_v1 t="+a.ticket.Token)
 
-	return request(req, dst)
+	err = request(req, dst)
+	return
 }
 
 const ubiProfilesURLTemplate string = "https://public-ubiservices.ubi.com/v3/profiles?namesOnPlatform=%s&platformType=uplay"
@@ -112,7 +128,7 @@ type ubiProfileResp struct {
 	} `json:"profiles"`
 }
 
-func (a *UbiAPI) ResolveUser(username string) (*stats.Profile, error) {
+func (a *UbiAPI) ResolveUser(username string) (*Profile, error) {
 	if err := a.checkAuthentication(); err != nil {
 		return nil, err
 	}
@@ -134,13 +150,13 @@ func (a *UbiAPI) ResolveUser(username string) (*stats.Profile, error) {
 	a.logger.Debug().
 		Str("username", username).
 		Msgf("resolved to profile ID %s", resolvedProfileID)
-	return &stats.Profile{
+	return &Profile{
 		Name:      resolvedName,
 		ProfileID: resolvedProfileID,
 	}, nil
 }
 
-func (a *UbiAPI) GetStats(profile *stats.Profile, season string, dst stats.StatsLoader) error {
+func (a *UbiAPI) GetStats(profile *Profile, season string, dst stats.Provider) error {
 	args := stats.UbiStatsURLParams{
 		ProfileID:   profile.ProfileID,
 		Aggregation: dst.AggregationType(),
@@ -156,19 +172,15 @@ func (a *UbiAPI) GetStats(profile *stats.Profile, season string, dst stats.Stats
 		return err
 	}
 
-	resp := new(stats.UbiStatsResponseJSON)
-	if err := a.requestAuthorized(requestURLBytes.String(), resp); err != nil {
+	if err := a.requestAuthorized(requestURLBytes.String(), dst); err != nil {
 		return err
 	}
 
-	if err := stats.LoadStats(resp, dst); err != nil {
-		return err
-	}
 	a.logger.Info().Msg("...done")
 	return nil
 }
 
-func (a *UbiAPI) GetRankedHistory(profile *stats.Profile, numSeasons int8) (ranked.SkillHistory, error) {
+func (a *UbiAPI) GetRankedHistory(profile *Profile, numSeasons int8) (ranked.SkillHistory, error) {
 	args := ranked.UbiSkillURLParams{
 		ProfileID:      profile.ProfileID,
 		NumPastSeasons: numSeasons,
