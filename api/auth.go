@@ -2,12 +2,12 @@ package api
 
 import (
 	"encoding/json"
-	"io"
 	"os"
 	"time"
 )
 
 type ticket struct {
+	Email      *string   `json:"email"`
 	Name       string    `json:"nameOnPlatform"`
 	ProfileID  string    `json:"profileId"`
 	SessionID  string    `json:"sessionId"`
@@ -71,12 +71,7 @@ func loadTicket() (t *ticket, err error) {
 		}
 	}()
 
-	var data []byte
-	data, err = io.ReadAll(file)
-	if err != nil {
-		return
-	}
 	t = new(ticket)
-	err = json.Unmarshal(data, t)
+	err = json.NewDecoder(file).Decode(t)
 	return
 }

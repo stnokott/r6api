@@ -11,8 +11,6 @@ import (
 	"github.com/stnokott/r6api/api"
 )
 
-// TODO: save email along with cached ticket to invalidate if different email than cached
-
 func main() {
 	writer := zerolog.ConsoleWriter{
 		Out:           os.Stdout,
