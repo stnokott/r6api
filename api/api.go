@@ -30,6 +30,7 @@ func (p *Profile) MarshalZerologObject(e *zerolog.Event) {
 
 type UbiAPI struct {
 	authCredentials string
+	email           string
 	ticket          *ticket
 	logger          zerolog.Logger
 }
@@ -39,6 +40,7 @@ func NewUbiAPI(email string, password string, logger zerolog.Logger) *UbiAPI {
 	authCredentials := base64.StdEncoding.EncodeToString(authInput)
 	return &UbiAPI{
 		authCredentials: authCredentials,
+		email:           email,
 		ticket:          nil,
 		logger:          logger,
 	}
@@ -65,6 +67,8 @@ func (a *UbiAPI) Login() (err error) {
 	if err != nil {
 		return
 	}
+	email := a.email
+	t.Email = &email
 
 	a.ticket = t
 	a.logger.Info().Msgf("successfully logged in as <%s>", a.ticket.Name)
@@ -92,8 +96,12 @@ func (a *UbiAPI) checkAuthentication() (err error) {
 			loginReason = "no cached token"
 		}
 	}
-	if a.ticket != nil && a.ticket.IsExpired() {
-		loginReason = "cached token expired"
+	if a.ticket != nil {
+		if a.ticket.Email == nil || *a.ticket.Email != a.email {
+			loginReason = "email mismatch"
+		} else if a.ticket.IsExpired() {
+			loginReason = "cached token expired"
+		}
 	}
 
 	if loginReason != "" {
