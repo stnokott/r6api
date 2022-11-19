@@ -36,7 +36,7 @@ func main() {
 		logger.Fatal().Err(err).Msg("error resolving user")
 	}
 
-	stats := new(stats.OperatorStats)
+	stats := new(stats.WeaponStats)
 	if err = a.GetStats(profile, "Y7S3", stats); err != nil {
 		logger.Fatal().Err(err).Msgf("error getting summarized stats for <%s>", profile.Name)
 	}

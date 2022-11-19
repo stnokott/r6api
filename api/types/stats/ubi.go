@@ -65,7 +65,7 @@ func (u *ubiTypedGameModeJSON) UnmarshalJSON(data []byte) error {
 	case typeTeamRoles:
 		u.Value = new(ubiGameModeJSON)
 	case typeTeamRoleWeapons:
-		u.Value = new(ubiTeamRoleWeaponsJSON)
+		u.Value = new(ubiGameModeWeaponsJSON)
 	default:
 		return fmt.Errorf("encountered unknown game mode type: '%s'", typed.Type)
 	}
@@ -126,31 +126,29 @@ func (u *ubiTypedTeamRoleJSON) UnmarshalJSON(data []byte) error {
 // ///////////////////
 // Team Role Weapons
 // ///////////////////
-type ubiTeamRoleWeaponsJSON struct {
+type ubiGameModeWeaponsJSON struct {
 	TeamRoles struct {
-		Attack  ubiWeaponSlotsJSON `json:"attacker"`
-		Defence ubiWeaponSlotsJSON `json:"defender"`
+		Attack  *ubiWeaponSlotsJSON `json:"attacker"`
+		Defence *ubiWeaponSlotsJSON `json:"defender"`
 	} `json:"teamRoles"`
 }
 
 type ubiWeaponSlotsJSON struct {
 	WeaponSlots struct {
-		Primary   ubiWeaponTypesJSON `json:"primaryWeapons"`
-		Secondary ubiWeaponTypesJSON `json:"secondaryWeapons"`
+		Primary   *ubiWeaponTypesJSON `json:"primaryWeapons"`
+		Secondary *ubiWeaponTypesJSON `json:"secondaryWeapons"`
 	} `json:"weaponSlots"`
 }
 
 type ubiWeaponTypesJSON struct {
 	WeaponTypes []struct {
-		WeaponTypeName string `json:"weaponType"`
-		Weapons        []struct {
-			WeaponName string `json:"weaponName"`
-			ubiWeaponStatsJSON
-		} `json:"weapons"`
+		WeaponTypeName string               `json:"weaponType"`
+		Weapons        []ubiWeaponStatsJSON `json:"weapons"`
 	} `json:"weaponTypes"`
 }
 
 type ubiWeaponStatsJSON struct {
+	WeaponName string `json:"weaponName"`
 	ubiReducedStatsJSON
 	RoundsWithKill      float64 `json:"roundsWithAKill"`
 	RoundsWithMultikill float64 `json:"roundsWithMultikill"`
