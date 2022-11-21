@@ -21,6 +21,7 @@ type Provider interface {
 	TeamRoleType() gameModeStatsType
 	LoadGameMode(GameMode, *ubiTypedGameModeJSON) error
 }
+
 type statsMetadata struct {
 	TimeFrom time.Time
 	TimeTo   time.Time
@@ -35,16 +36,16 @@ func unmarshalTeamRoleStats[T Provider](dst T, data []byte) (err error) {
 	if root.StatsCasual == nil && root.StatsUnranked == nil && root.StatsRanked == nil {
 		return
 	}
-	jsons := []*ubiTypedGameModeJSON{root.StatsCasual, root.StatsUnranked, root.StatsRanked}
-	fields := []GameMode{CASUAL, UNRANKED, RANKED}
-	for i, jsn := range jsons {
+	gameModeJSONs := []*ubiTypedGameModeJSON{root.StatsCasual, root.StatsUnranked, root.StatsRanked}
+	gameModes := []GameMode{CASUAL, UNRANKED, RANKED}
+	for i, jsn := range gameModeJSONs {
 		if jsn == nil {
 			continue
 		}
 		if jsn.Type != dst.TeamRoleType() {
 			return fmt.Errorf("unexpected game mode stats type: '%s', expected '%s'", jsn.Type, dst.TeamRoleType())
 		}
-		if err = dst.LoadGameMode(fields[i], jsn); err != nil {
+		if err = dst.LoadGameMode(gameModes[i], jsn); err != nil {
 			return
 		}
 	}

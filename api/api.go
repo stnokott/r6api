@@ -5,9 +5,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 
+	"github.com/PuerkitoBio/goquery"
+	"github.com/stnokott/r6api/api/types/metadata"
 	"github.com/stnokott/r6api/api/types/ranked"
 	"github.com/stnokott/r6api/api/types/stats"
 
@@ -63,7 +66,7 @@ func (a *UbiAPI) Login() (err error) {
 	req.Header.Add("Content-Type", "application/json")
 
 	t := new(ticket)
-	err = request(req, t)
+	err = requestJSON(req, t)
 	if err != nil {
 		return
 	}
@@ -122,7 +125,7 @@ func (a *UbiAPI) requestAuthorized(url string, dst any) (err error) {
 	req.Header.Add("Expiration", a.ticket.Expiration.Format("2006-01-02T15:04:05Z"))
 	req.Header.Add("Authorization", "ubi_v1 t="+a.ticket.Token)
 
-	err = request(req, dst)
+	err = requestJSON(req, dst)
 	return
 }
 
@@ -162,6 +165,40 @@ func (a *UbiAPI) ResolveUser(username string) (*Profile, error) {
 		Name:      resolvedName,
 		ProfileID: resolvedProfileID,
 	}, nil
+}
+
+// GetMetadata retrieves information about seasons, i.e. season slug or MMR bounds.
+// This is an expensive operation.
+func (a *UbiAPI) GetMetadata() (m *metadata.Metadata, err error) {
+	var req *http.Request
+	req, err = http.NewRequest("GET", metadata.URL, nil)
+	if err != nil {
+		return
+	}
+	req.Header.Add("Accept", "text/html,application/xhtml+xml")
+
+	a.logger.Info().Msg("getting metadata")
+	var body io.ReadCloser
+	body, err = requestPlain(req)
+	if err != nil {
+		return
+	}
+
+	defer func() {
+		errClose := body.Close()
+		if err == nil {
+			err = errClose
+		}
+	}()
+
+	var doc *goquery.Document
+	doc, err = goquery.NewDocumentFromReader(body)
+	if err != nil {
+		return
+	}
+	m, err = metadata.New(doc.Find("script").Text())
+	a.logger.Info().Msg("...done")
+	return
 }
 
 func (a *UbiAPI) GetStats(profile *Profile, season string, dst stats.Provider) error {

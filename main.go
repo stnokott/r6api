@@ -38,4 +38,12 @@ func main() {
 	if err = a.GetStats(profile, "Y7S3", stats); err != nil {
 		logger.Fatal().Err(err).Msgf("error getting summarized stats for <%s>", profile.Name)
 	}
+
+	metadata, err := a.GetMetadata()
+	if err != nil {
+		logger.Fatal().Err(err).Msg("error getting metadata")
+	}
+	for _, season := range metadata.Seasons {
+		logger.Info().Str("slug", season.Slug).Str("name", season.Name).Msg("")
+	}
 }
