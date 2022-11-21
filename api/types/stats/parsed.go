@@ -118,135 +118,41 @@ func (s *SummarizedStats) LoadGameMode(m GameMode, v *ubiTypedGameModeJSON) (err
 	return
 }
 
-func newDetailedTeamRoleStats(data *ubiDetailedStatsJSON) *detailedStats {
-	return &detailedStats{
-		reducedStats: reducedStats{
-			Headshots:    data.Headshots,
-			Kills:        data.Kills,
-			RoundsPlayed: data.RoundsPlayed,
-			RoundsWon:    data.RoundsWon,
-			RoundsLost:   data.RoundsLost,
-		},
-		MatchesPlayed:        data.MatchesPlayed,
-		MatchesWon:           data.MatchesWon,
-		MatchesLost:          data.MatchesLost,
-		MinutesPlayed:        data.MinutesPlayed,
-		Assists:              data.Assists,
-		Deaths:               data.Deaths,
-		KillsPerRound:        data.KillsPerRound.Value,
-		MeleeKills:           data.MeleeKills,
-		TeamKills:            data.TeamKills,
-		HeadshotPercentage:   data.HeadshotPercentage.Value,
-		EntryDeaths:          data.EntryDeaths,
-		EntryDeathTrades:     data.EntryDeathTrades,
-		EntryKills:           data.EntryKills,
-		EntryKillTrades:      data.EntryKillTrades,
-		Trades:               data.Trades,
-		Revives:              data.Revives,
-		RoundsSurvived:       data.RoundsSurvived.Value,
-		RoundsWithKill:       data.RoundsWithKill.Value,
-		RoundsWithMultikill:  data.RoundsWithMultikill.Value,
-		RoundsWithAce:        data.RoundsWithAce.Value,
-		RoundsWithClutch:     data.RoundsWithClutch.Value,
-		RoundsWithKOST:       data.RoundsWithKOST.Value,
-		RoundsWithEntryDeath: data.RoundsWithEntryDeath.Value,
-		RoundsWithEntryKill:  data.RoundsWithEntryKill.Value,
-		DistancePerRound:     data.DistancePerRound,
-		DistanceTotal:        data.DistanceTotal,
-		TimeAlivePerMatch:    data.TimeAlivePerMatch,
-		TimeDeadPerMatch:     data.TimeDeadPerMatch,
-	}
-}
-
 /*************
 Operator stats
- *************/
+**************/
 
 type OperatorStats struct {
-	statsMetadata
-	Casual   *operatorTeamRoles
-	Unranked *operatorTeamRoles
-	Ranked   *operatorTeamRoles
-}
-
-type operatorTeamRoles struct {
-	Attack  []operatorTeamRoleStats
-	Defence []operatorTeamRoleStats
-}
-
-type operatorTeamRoleStats struct {
-	OperatorName string
-	detailedStats
+	abstractNamedStats
 }
 
 func (s *OperatorStats) AggregationType() string {
 	return "operators"
 }
 
-func (s *OperatorStats) TeamRoleType() gameModeStatsType {
-	return typeTeamRoles
-}
-
-func (s *OperatorStats) UnmarshalJSON(data []byte) (err error) {
+func (s *OperatorStats) UnmarshalJSON(data []byte) error {
 	return unmarshalTeamRoleStats(s, data)
 }
 
-func (s *OperatorStats) LoadGameMode(m GameMode, v *ubiTypedGameModeJSON) (err error) {
-	jsn, ok := v.Value.(*ubiGameModeJSON)
-	if !ok {
-		err = fmt.Errorf("could not cast json (%s) to required struct (*%s)", reflect.TypeOf(v.Value), reflect.TypeOf(ubiGameModeJSON{}))
-		return
-	}
-	stats := new(operatorTeamRoles)
-	switch m {
-	case CASUAL:
-		s.Casual = stats
-	case UNRANKED:
-		s.Unranked = stats
-	case RANKED:
-		s.Ranked = stats
-	default:
-		err = fmt.Errorf("got invalid game mode: %s", m)
-		return
-	}
+/********
+Map stats
+*********/
 
-	teamRole := [][]ubiTypedTeamRoleJSON{jsn.TeamRoles.Attack, jsn.TeamRoles.Defence}
-	resultFields := []*[]operatorTeamRoleStats{&stats.Attack, &stats.Defence}
-
-	for i, teamRoleData := range teamRole {
-		if len(teamRoleData) == 0 {
-			continue
-		}
-		resultTeamRoleData := make([]operatorTeamRoleStats, len(teamRoleData))
-		for j, teamRoleStats := range teamRoleData {
-			data, ok := teamRoleStats.Value.(*ubiDetailedStatsJSON)
-			if !ok {
-				err = fmt.Errorf(
-					"team role data (%s) could not be cast to required struct (%s)",
-					reflect.TypeOf(teamRoleData[0].Value).Name(),
-					reflect.TypeOf(ubiDetailedStatsJSON{}).Name(),
-				)
-				return
-			}
-			var operatorName string
-			if data.StatsDetail == nil {
-				operatorName = "n/a"
-			} else {
-				operatorName = *data.StatsDetail
-			}
-			resultTeamRoleData[j] = operatorTeamRoleStats{
-				OperatorName:  operatorName,
-				detailedStats: *newDetailedTeamRoleStats(data),
-			}
-		}
-		*resultFields[i] = resultTeamRoleData
-	}
-	return
+type MapStats struct {
+	abstractNamedStats
 }
 
-/*
+func (s *MapStats) AggregationType() string {
+	return "maps"
+}
+
+func (s *MapStats) UnmarshalJSON(data []byte) error {
+	return unmarshalTeamRoleStats(s, data)
+}
+
+/**************
 Weapons structs
-*/
+***************/
 
 type WeaponStats struct {
 	statsMetadata
@@ -283,7 +189,7 @@ func (s *WeaponStats) TeamRoleType() gameModeStatsType {
 	return typeTeamRoleWeapons
 }
 
-func (s *WeaponStats) UnmarshalJSON(data []byte) (err error) {
+func (s *WeaponStats) UnmarshalJSON(data []byte) error {
 	return unmarshalTeamRoleStats(s, data)
 }
 
@@ -393,4 +299,118 @@ type detailedStats struct {
 	DistanceTotal        float64
 	TimeAlivePerMatch    float64
 	TimeDeadPerMatch     float64
+}
+
+func newDetailedTeamRoleStats(data *ubiDetailedStatsJSON) *detailedStats {
+	return &detailedStats{
+		reducedStats: reducedStats{
+			Headshots:    data.Headshots,
+			Kills:        data.Kills,
+			RoundsPlayed: data.RoundsPlayed,
+			RoundsWon:    data.RoundsWon,
+			RoundsLost:   data.RoundsLost,
+		},
+		MatchesPlayed:        data.MatchesPlayed,
+		MatchesWon:           data.MatchesWon,
+		MatchesLost:          data.MatchesLost,
+		MinutesPlayed:        data.MinutesPlayed,
+		Assists:              data.Assists,
+		Deaths:               data.Deaths,
+		KillsPerRound:        data.KillsPerRound.Value,
+		MeleeKills:           data.MeleeKills,
+		TeamKills:            data.TeamKills,
+		HeadshotPercentage:   data.HeadshotPercentage.Value,
+		EntryDeaths:          data.EntryDeaths,
+		EntryDeathTrades:     data.EntryDeathTrades,
+		EntryKills:           data.EntryKills,
+		EntryKillTrades:      data.EntryKillTrades,
+		Trades:               data.Trades,
+		Revives:              data.Revives,
+		RoundsSurvived:       data.RoundsSurvived.Value,
+		RoundsWithKill:       data.RoundsWithKill.Value,
+		RoundsWithMultikill:  data.RoundsWithMultikill.Value,
+		RoundsWithAce:        data.RoundsWithAce.Value,
+		RoundsWithClutch:     data.RoundsWithClutch.Value,
+		RoundsWithKOST:       data.RoundsWithKOST.Value,
+		RoundsWithEntryDeath: data.RoundsWithEntryDeath.Value,
+		RoundsWithEntryKill:  data.RoundsWithEntryKill.Value,
+		DistancePerRound:     data.DistancePerRound,
+		DistanceTotal:        data.DistanceTotal,
+		TimeAlivePerMatch:    data.TimeAlivePerMatch,
+		TimeDeadPerMatch:     data.TimeDeadPerMatch,
+	}
+}
+
+type abstractNamedStats struct {
+	statsMetadata
+	Casual   *abstractNamedTeamRoles
+	Unranked *abstractNamedTeamRoles
+	Ranked   *abstractNamedTeamRoles
+}
+
+type abstractNamedTeamRoles struct {
+	Attack  []abstractNamedTeamRoleStats
+	Defence []abstractNamedTeamRoleStats
+}
+
+type abstractNamedTeamRoleStats struct {
+	Name string
+	detailedStats
+}
+
+func (s *abstractNamedStats) TeamRoleType() gameModeStatsType {
+	return typeTeamRoles
+}
+
+func (s *abstractNamedStats) LoadGameMode(m GameMode, v *ubiTypedGameModeJSON) (err error) {
+	jsn, ok := v.Value.(*ubiGameModeJSON)
+	if !ok {
+		err = fmt.Errorf("could not cast json (%s) to required struct (*%s)", reflect.TypeOf(v.Value), reflect.TypeOf(ubiGameModeJSON{}))
+		return
+	}
+	stats := new(abstractNamedTeamRoles)
+	switch m {
+	case CASUAL:
+		s.Casual = stats
+	case UNRANKED:
+		s.Unranked = stats
+	case RANKED:
+		s.Ranked = stats
+	default:
+		err = fmt.Errorf("got invalid game mode: %s", m)
+		return
+	}
+
+	teamRole := [][]ubiTypedTeamRoleJSON{jsn.TeamRoles.Attack, jsn.TeamRoles.Defence}
+	resultFields := []*[]abstractNamedTeamRoleStats{&stats.Attack, &stats.Defence}
+
+	for i, teamRoleData := range teamRole {
+		if len(teamRoleData) == 0 {
+			continue
+		}
+		resultTeamRoleData := make([]abstractNamedTeamRoleStats, len(teamRoleData))
+		for j, teamRoleStats := range teamRoleData {
+			data, ok := teamRoleStats.Value.(*ubiDetailedStatsJSON)
+			if !ok {
+				err = fmt.Errorf(
+					"team role data (%s) could not be cast to required struct (%s)",
+					reflect.TypeOf(teamRoleData[0].Value).Name(),
+					reflect.TypeOf(ubiDetailedStatsJSON{}).Name(),
+				)
+				return
+			}
+			var name string
+			if data.StatsDetail == nil {
+				name = "n/a"
+			} else {
+				name = *data.StatsDetail
+			}
+			resultTeamRoleData[j] = abstractNamedTeamRoleStats{
+				Name:          name,
+				detailedStats: *newDetailedTeamRoleStats(data),
+			}
+		}
+		*resultFields[i] = resultTeamRoleData
+	}
+	return
 }
