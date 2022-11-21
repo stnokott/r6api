@@ -14,7 +14,15 @@ type ubiErrResp struct {
 	Message   string      `json:"message"`
 }
 
-func request(r *http.Request, dst any) (err error) {
+func requestPlain(r *http.Request) (io.ReadCloser, error) {
+	resp, err := http.DefaultClient.Do(r)
+	if err != nil {
+		return nil, err
+	}
+	return resp.Body, nil
+}
+
+func requestJSON(r *http.Request, dst any) (err error) {
 	r.Header.Add("User-Agent", "inofficial private non-commercial stats API (nfkottenhahn@web.de)")
 	r.Header.Add("Accept", "application/json")
 	var resp *http.Response
