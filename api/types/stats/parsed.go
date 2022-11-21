@@ -80,9 +80,9 @@ func (s *SummarizedStats) UnmarshalJSON(data []byte) error {
 }
 
 func (s *SummarizedStats) LoadGameMode(m GameMode, v *ubiTypedGameModeJSON) (err error) {
-	jsn, ok := v.Value.(*ubiGameModeJSON)
+	jsn, ok := v.Value.(*ubiTeamRolesJSON)
 	if !ok {
-		err = fmt.Errorf("could not cast json (%s) to required struct (*%s)", reflect.TypeOf(v.Value), reflect.TypeOf(ubiGameModeJSON{}))
+		err = fmt.Errorf("could not cast json (%s) to required struct (*%s)", reflect.TypeOf(v.Value), reflect.TypeOf(ubiTeamRolesJSON{}))
 		return
 	}
 	stats := new(summarizedGameModeStats)
@@ -97,23 +97,23 @@ func (s *SummarizedStats) LoadGameMode(m GameMode, v *ubiTypedGameModeJSON) (err
 		err = fmt.Errorf("got invalid game mode: %s", m)
 		return
 	}
-	teamRole := [][]ubiTypedTeamRoleJSON{jsn.TeamRoles.Attack, jsn.TeamRoles.Defence}
-	fields := []**detailedStats{&stats.Attack, &stats.Defence}
+	inputTeamRoles := [][]ubiTypedTeamRoleJSON{jsn.TeamRoles.Attack, jsn.TeamRoles.Defence}
+	outputTeamRoles := []**detailedStats{&stats.Attack, &stats.Defence}
 
-	for i, teamRoleData := range teamRole {
-		if len(teamRoleData) == 0 {
+	for i, inputTeamRole := range inputTeamRoles {
+		if len(inputTeamRole) == 0 {
 			continue
 		}
-		data, ok := teamRoleData[0].Value.(*ubiDetailedStatsJSON)
+		data, ok := inputTeamRole[0].Value.(*ubiDetailedStatsJSON)
 		if !ok {
 			err = fmt.Errorf(
 				"team role data (%s) could not be cast to required struct (%s)",
-				reflect.TypeOf(teamRoleData[0].Value).Name(),
+				reflect.TypeOf(inputTeamRole[0].Value).Name(),
 				reflect.TypeOf(ubiDetailedStatsJSON{}).Name(),
 			)
 			return
 		}
-		*fields[i] = newDetailedTeamRoleStats(data)
+		*outputTeamRoles[i] = newDetailedTeamRoleStats(data)
 	}
 	return
 }
@@ -196,7 +196,7 @@ func (s *WeaponStats) UnmarshalJSON(data []byte) error {
 func (s *WeaponStats) LoadGameMode(m GameMode, v *ubiTypedGameModeJSON) (err error) {
 	jsn, ok := v.Value.(*ubiGameModeWeaponsJSON)
 	if !ok {
-		err = fmt.Errorf("could not cast json (%s) to required struct (*%s)", reflect.TypeOf(v.Value), reflect.TypeOf(ubiGameModeJSON{}))
+		err = fmt.Errorf("could not cast json (%s) to required struct (*%s)", reflect.TypeOf(v.Value), reflect.TypeOf(ubiTeamRolesJSON{}))
 		return
 	}
 	stats := new(weaponTeamRoles)
@@ -257,9 +257,139 @@ func newWeaponTypesMap(v *ubiWeaponTypesJSON) weaponTypesMap {
 	return result
 }
 
-/*
+/***************************
+Moving Point Average (Trend)
+***************************/
+
+type MovingTrendStats struct {
+	statsMetadata
+	Casual   *movingTrendTeamRoles
+	Unranked *movingTrendTeamRoles
+	Ranked   *movingTrendTeamRoles
+}
+
+type movingTrendTeamRoles struct {
+	Attack  *movingTrend
+	Defence *movingTrend
+}
+
+type movingTrend struct {
+	MovingPoints           int
+	DistancePerRound       movingTrendEntry
+	HeadshotPercentage     movingTrendEntry
+	KillDeathRatio         movingTrendEntry
+	KillsPerRound          movingTrendEntry
+	RatioTimeAlivePerMatch movingTrendEntry
+	RoundsSurvived         movingTrendEntry
+	RoundsWithKill         movingTrendEntry
+	RoundsWithKOST         movingTrendEntry
+	RoundsWithMultikill    movingTrendEntry
+	RoundsWithOpeningDeath movingTrendEntry
+	RoundsWithOpeningKill  movingTrendEntry
+	WinLossRatio           movingTrendEntry
+}
+
+type movingTrendEntry struct {
+	Low     float64
+	Average float64
+	High    float64
+	Actuals movingTrendPoints
+	Trend   movingTrendPoints
+}
+
+type movingTrendPoints []float64
+
+func (s *MovingTrendStats) AggregationType() string {
+	return "movingpoint"
+}
+
+func (s *MovingTrendStats) TeamRoleType() gameModeStatsType {
+	return typeTeamRoles
+}
+
+func (s *MovingTrendStats) UnmarshalJSON(data []byte) error {
+	return unmarshalTeamRoleStats(s, data)
+}
+
+func (s *MovingTrendStats) LoadGameMode(m GameMode, v *ubiTypedGameModeJSON) (err error) {
+	jsn, ok := v.Value.(*ubiTeamRolesJSON)
+	if !ok {
+		err = fmt.Errorf("could not cast json (%s) to required struct (*%s)", reflect.TypeOf(v.Value), reflect.TypeOf(ubiTeamRolesJSON{}))
+		return
+	}
+	stats := new(movingTrendTeamRoles)
+	switch m {
+	case CASUAL:
+		s.Casual = stats
+	case UNRANKED:
+		s.Unranked = stats
+	case RANKED:
+		s.Ranked = stats
+	default:
+		err = fmt.Errorf("got invalid game mode: %s", m)
+		return
+	}
+	inputTeamRoles := [][]ubiTypedTeamRoleJSON{jsn.TeamRoles.Attack, jsn.TeamRoles.Defence}
+	outputTeamRoles := []**movingTrend{&stats.Attack, &stats.Defence}
+
+	for i, teamRole := range inputTeamRoles {
+		if len(teamRole) == 0 {
+			continue
+		}
+		data, ok := teamRole[0].Value.(*ubiMovingTrendJSON)
+		if !ok {
+			err = fmt.Errorf(
+				"team role data (%s) could not be cast to required struct (%s)",
+				reflect.TypeOf(teamRole[0].Value).Name(),
+				reflect.TypeOf(ubiMovingTrendJSON{}).Name(),
+			)
+			return
+		}
+		*outputTeamRoles[i] = newMovingTrendStats(data)
+	}
+	return
+}
+
+func newMovingTrendStats(v *ubiMovingTrendJSON) *movingTrend {
+	return &movingTrend{
+		MovingPoints:           v.MovingPoints,
+		DistancePerRound:       newMovingTrendEntry(v.DistancePerRound),
+		HeadshotPercentage:     newMovingTrendEntry(v.HeadshotPercentage),
+		KillDeathRatio:         newMovingTrendEntry(v.KillDeathRatio),
+		KillsPerRound:          newMovingTrendEntry(v.KillsPerRound),
+		RatioTimeAlivePerMatch: newMovingTrendEntry(v.RatioTimeAlivePerMatch),
+		RoundsSurvived:         newMovingTrendEntry(v.RoundsSurvived),
+		RoundsWithKill:         newMovingTrendEntry(v.RoundsWithKill),
+		RoundsWithKOST:         newMovingTrendEntry(v.RoundsWithKOST),
+		RoundsWithMultikill:    newMovingTrendEntry(v.RoundsWithMultikill),
+		RoundsWithOpeningDeath: newMovingTrendEntry(v.RoundsWithOpeningDeath),
+		RoundsWithOpeningKill:  newMovingTrendEntry(v.RoundsWithOpeningKill),
+		WinLossRatio:           newMovingTrendEntry(v.WinLossRatio),
+	}
+}
+
+func newMovingTrendEntry(v ubiMovingTrendEntryJSON) movingTrendEntry {
+	result := movingTrendEntry{
+		Low:     v.Low,
+		Average: v.Average,
+		High:    v.High,
+	}
+	inputFields := []ubiMovingTrendPoints{v.Actuals, v.Trend}
+	outputFields := []*movingTrendPoints{&result.Actuals, &result.Trend}
+
+	for i, inputField := range inputFields {
+		points := make(movingTrendPoints, len(inputField))
+		for j, v := range inputField {
+			points[j-1] = v // -1 since index in JSON starts at 1
+		}
+		*outputFields[i] = points
+	}
+	return result
+}
+
+/**************
 Generic structs
-*/
+***************/
 
 type reducedStats struct {
 	Headshots    int
@@ -363,9 +493,9 @@ func (s *abstractNamedStats) TeamRoleType() gameModeStatsType {
 }
 
 func (s *abstractNamedStats) LoadGameMode(m GameMode, v *ubiTypedGameModeJSON) (err error) {
-	jsn, ok := v.Value.(*ubiGameModeJSON)
+	jsn, ok := v.Value.(*ubiTeamRolesJSON)
 	if !ok {
-		err = fmt.Errorf("could not cast json (%s) to required struct (*%s)", reflect.TypeOf(v.Value), reflect.TypeOf(ubiGameModeJSON{}))
+		err = fmt.Errorf("could not cast json (%s) to required struct (*%s)", reflect.TypeOf(v.Value), reflect.TypeOf(ubiTeamRolesJSON{}))
 		return
 	}
 	stats := new(abstractNamedTeamRoles)

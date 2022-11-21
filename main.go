@@ -34,7 +34,7 @@ func main() {
 		logger.Fatal().Err(err).Msg("error resolving user")
 	}
 
-	stats := new(stats.MapStats)
+	stats := new(stats.MovingTrendStats)
 	if err = a.GetStats(profile, "Y7S3", stats); err != nil {
 		logger.Fatal().Err(err).Msgf("error getting summarized stats for <%s>", profile.Name)
 	}

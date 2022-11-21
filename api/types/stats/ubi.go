@@ -8,6 +8,8 @@ import (
 )
 
 // TODO: test view=seasonal
+// TODO: test mapName=??
+// TODO: test bombsite=??
 
 var UbiStatsURLTemplate = template.Must(template.New("statsURL").Parse(
 	"https://prod.datadev.ubisoft.com/v1/profiles/{{urlquery .ProfileID}}/playerstats?spaceId=5172a557-50b5-4665-b7db-e3f2e8c5041d&view=current&aggregation={{urlquery .Aggregation}}&gameMode=ranked,unranked,casual&platform=PC&teamRole=attacker,defender&seasons={{urlquery .Season}}",
@@ -63,7 +65,7 @@ func (u *ubiTypedGameModeJSON) UnmarshalJSON(data []byte) error {
 
 	switch typed.Type {
 	case typeTeamRoles:
-		u.Value = new(ubiGameModeJSON)
+		u.Value = new(ubiTeamRolesJSON)
 	case typeTeamRoleWeapons:
 		u.Value = new(ubiGameModeWeaponsJSON)
 	default:
@@ -81,19 +83,18 @@ Team Roles Stats Types
 // ////////////
 // Team Roles
 // ////////////
-type ubiGameModeJSON struct {
+type ubiTeamRolesJSON struct {
 	TeamRoles struct {
 		Attack  []ubiTypedTeamRoleJSON `json:"attacker"`
 		Defence []ubiTypedTeamRoleJSON `json:"defender"`
 	} `json:"teamRoles"`
 }
 
-// TODO: remove if only one type
-
 type teamRoleStatsType string
 
 const (
 	typeGeneralized teamRoleStatsType = "Generalized"
+	typeMovingPoint teamRoleStatsType = "Moving Point Average Trend"
 )
 
 type ubiTeamRoleStatsTypeJSON struct {
@@ -115,6 +116,8 @@ func (u *ubiTypedTeamRoleJSON) UnmarshalJSON(data []byte) error {
 	switch typed.Type {
 	case typeGeneralized:
 		u.Value = new(ubiDetailedStatsJSON)
+	case typeMovingPoint:
+		u.Value = new(ubiMovingTrendJSON)
 	default:
 		return fmt.Errorf("encountered unknown team role type: '%s'", typed.Type)
 	}
@@ -123,9 +126,11 @@ func (u *ubiTypedTeamRoleJSON) UnmarshalJSON(data []byte) error {
 	return err
 }
 
-// ///////////////////
-// Team Role Weapons
-// ///////////////////
+/*
+***************
+Team Role Weapons
+****************
+*/
 type ubiGameModeWeaponsJSON struct {
 	TeamRoles struct {
 		Attack  *ubiWeaponSlotsJSON `json:"attacker"`
@@ -154,6 +159,36 @@ type ubiWeaponStatsJSON struct {
 	RoundsWithMultikill float64 `json:"roundsWithMultikill"`
 	HeadshotPercentage  float64 `json:"headshotAccuracy"`
 }
+
+/***************************
+Moving Point Average (Trend)
+***************************/
+
+type ubiMovingTrendJSON struct {
+	MovingPoints           int                     `json:"movingPoints"`
+	DistancePerRound       ubiMovingTrendEntryJSON `json:"distancePerRound"`
+	HeadshotPercentage     ubiMovingTrendEntryJSON `json:"headshotAccuracy"`
+	KillDeathRatio         ubiMovingTrendEntryJSON `json:"killDeathRatio"`
+	KillsPerRound          ubiMovingTrendEntryJSON `json:"killsPerRound"`
+	RatioTimeAlivePerMatch ubiMovingTrendEntryJSON `json:"ratioTimeAlivePerMatch"`
+	RoundsSurvived         ubiMovingTrendEntryJSON `json:"roundsSurvived"`
+	RoundsWithKill         ubiMovingTrendEntryJSON `json:"roundsWithAKill"`
+	RoundsWithKOST         ubiMovingTrendEntryJSON `json:"roundsWithKOST"`
+	RoundsWithMultikill    ubiMovingTrendEntryJSON `json:"roundsWithMultiKill"`
+	RoundsWithOpeningDeath ubiMovingTrendEntryJSON `json:"roundsWithOpeningDeath"`
+	RoundsWithOpeningKill  ubiMovingTrendEntryJSON `json:"roundsWithOpeningKill"`
+	WinLossRatio           ubiMovingTrendEntryJSON `json:"winLossRatio"`
+}
+
+type ubiMovingTrendEntryJSON struct {
+	Low     float64              `json:"low"`
+	Average float64              `json:"average"`
+	High    float64              `json:"high"`
+	Actuals ubiMovingTrendPoints `json:"actuals"`
+	Trend   ubiMovingTrendPoints `json:"trend"`
+}
+
+type ubiMovingTrendPoints map[int]float64
 
 /***************
 Generic structs
