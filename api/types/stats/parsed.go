@@ -25,13 +25,13 @@ type statsMetadata struct {
 	TimeTo   time.Time
 }
 
-type statsLoader[T summarizedGameModeStats | abstractNamedTeamRoles | weaponTeamRoles | movingTrendTeamRoles, TJSON ubiTeamRolesJSON | ubiGameModeWeaponsJSON] struct {
-	Casual   *T
-	Unranked *T
-	Ranked   *T
+type statsLoader[TGameMode any, TJSON any] struct {
+	Casual   *TGameMode
+	Unranked *TGameMode
+	Ranked   *TGameMode
 }
 
-func (l *statsLoader[T, TJSON]) loadRawStats(data []byte, dst Provider, loadTeamRoles func(*TJSON, *T) error) (err error) {
+func (l *statsLoader[TGameMode, TJSON]) loadRawStats(data []byte, dst Provider, loadTeamRoles func(*TJSON, *TGameMode) error) (err error) {
 	var raw ubiStatsResponseJSON
 	if err = json.Unmarshal(data, &raw); err != nil {
 		return
@@ -53,7 +53,7 @@ func (l *statsLoader[T, TJSON]) loadRawStats(data []byte, dst Provider, loadTeam
 		if !ok {
 			return fmt.Errorf("could not cast json (%T) to required struct (*%T)", gameModeJSON.Value, *new(TJSON))
 		}
-		stats := new(T)
+		stats := new(TGameMode)
 		switch gameModes[i] {
 		case CASUAL:
 			l.Casual = stats
