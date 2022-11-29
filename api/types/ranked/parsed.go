@@ -27,7 +27,7 @@ func GetSkillHistory(v *UbiSkillRecordsJSON) (SkillHistory, error) {
 			return nil, errors.New("no skill reports found")
 		}
 		skill := board.PlayerSkills[0]
-		history[i] = NewSeasonStats(skill, record.SeasonID)
+		history[i] = NewSeasonStats(skill)
 	}
 	return history, nil
 }
@@ -35,7 +35,7 @@ func GetSkillHistory(v *UbiSkillRecordsJSON) (SkillHistory, error) {
 type SkillHistory []SeasonStats
 
 type SeasonStats struct {
-	SeasonID             int
+	Season               int
 	Abandons             int
 	Deaths               int
 	Kills                int
@@ -50,7 +50,6 @@ type SeasonStats struct {
 	NextRankMMR          int
 	PreviousRankMMR      int
 	Rank                 int
-	Season               int
 	SkillMean            float64
 	SkillStdev           float64
 	TopRankPosition      int
@@ -58,9 +57,9 @@ type SeasonStats struct {
 	Wins                 int
 }
 
-func NewSeasonStats(v ubiPlayerSkillJSON, seasonID int) SeasonStats {
+func NewSeasonStats(v ubiPlayerSkillJSON) SeasonStats {
 	return SeasonStats{
-		SeasonID:             seasonID,
+		Season:               v.Season,
 		Abandons:             v.Abandons,
 		Deaths:               v.Deaths,
 		Kills:                v.Kills,
@@ -75,7 +74,6 @@ func NewSeasonStats(v ubiPlayerSkillJSON, seasonID int) SeasonStats {
 		NextRankMMR:          int(v.NextRankMMR),
 		PreviousRankMMR:      int(v.PreviousRankMMR),
 		Rank:                 v.Rank,
-		Season:               v.Season,
 		SkillMean:            v.SkillMean,
 		SkillStdev:           v.SkillStdev,
 		TopRankPosition:      v.TopRankPosition,
