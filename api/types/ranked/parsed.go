@@ -35,7 +35,7 @@ func GetSkillHistory(v *UbiSkillRecordsJSON) (SkillHistory, error) {
 type SkillHistory []SeasonStats
 
 type SeasonStats struct {
-	Season               int
+	SeasonID             int
 	Abandons             int
 	Deaths               int
 	Kills                int
@@ -59,7 +59,7 @@ type SeasonStats struct {
 
 func NewSeasonStats(v ubiPlayerSkillJSON) SeasonStats {
 	return SeasonStats{
-		Season:               v.Season,
+		SeasonID:             v.Season,
 		Abandons:             v.Abandons,
 		Deaths:               v.Deaths,
 		Kills:                v.Kills,

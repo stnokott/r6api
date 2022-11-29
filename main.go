@@ -5,8 +5,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/stnokott/r6api/api/types/stats"
-
 	"github.com/rs/zerolog"
 	"github.com/stnokott/r6api/api"
 )
@@ -34,16 +32,19 @@ func main() {
 		logger.Fatal().Err(err).Msg("error resolving user")
 	}
 
-	stats := new(stats.MovingTrendStats)
-	if err = a.GetStats(profile, "Y7S3", stats); err != nil {
-		logger.Fatal().Err(err).Msgf("error getting summarized stats for <%s>", profile.Name)
-	}
-
 	metadata, err := a.GetMetadata()
 	if err != nil {
 		logger.Fatal().Err(err).Msg("error getting metadata")
 	}
-	for _, season := range metadata.Seasons {
-		logger.Info().Str("slug", season.Slug).Str("name", season.Name).Msg("")
+
+	ranked, err := a.GetRankedHistory(profile, 1)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("error getting ranked history")
 	}
+	r := ranked[0]
+	seasonSlug := metadata.SlugFromID(r.SeasonID)
+	if seasonSlug == "" {
+		seasonSlug = "n/a"
+	}
+	logger.Info().Str("season", seasonSlug).Int("kills", r.Kills).Int("deaths", r.Deaths).Send()
 }
