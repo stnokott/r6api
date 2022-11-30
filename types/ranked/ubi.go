@@ -21,11 +21,14 @@ var UbiSkillURLTemplate = template.Must(template.New("skillURL").Parse(
 	),
 ))
 
+// UbiSkillURLParams contains parameters for UbiSkillURLTemplate.
+// NumPastSeasons should be a positive integer indicating the number of seasons to retrieve, starting with the current one.
 type UbiSkillURLParams struct {
 	ProfileID      string
-	NumPastSeasons int8
+	NumPastSeasons uint8
 }
 
+// SeasonIDs returns a query string used in UbiSkillURLTemplate and should not be called directly.
 func (p UbiSkillURLParams) SeasonIDs() string {
 	seasonIDs := make([]string, p.NumPastSeasons)
 	for i := range seasonIDs {

@@ -14,10 +14,11 @@ const (
 	RANKED   GameMode = "ranked"
 )
 
+// Provider should be implemented by statistics structs to enable it to be unmarshalled properly into the corresponding struct.
 type Provider interface {
 	json.Unmarshaler
-	AggregationType() string
-	TeamRoleType() gameModeStatsType
+	AggregationType() string         // type of aggregation to be used in URL query
+	TeamRoleType() gameModeStatsType // type of team role to be used in URL query
 }
 
 type statsMetadata struct {
@@ -73,6 +74,7 @@ func (l *statsLoader[TGameMode, TJSON]) loadRawStats(data []byte, dst Provider, 
 Summarized stats
  ***************/
 
+// SummarizedStats provides stats without any specific aggregation.
 type SummarizedStats struct {
 	statsLoader[summarizedGameModeStats, ubiTeamRolesJSON]
 	statsMetadata
@@ -121,6 +123,7 @@ func (*SummarizedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *summarizedGam
 Operator stats
 **************/
 
+// OperatorStats provides stats aggregated by operator.
 type OperatorStats struct {
 	abstractNamedStats
 }
@@ -137,6 +140,7 @@ func (s *OperatorStats) UnmarshalJSON(data []byte) error {
 Map stats
 *********/
 
+// MapStats provides stats aggregated by map.
 type MapStats struct {
 	abstractNamedStats
 }
@@ -153,6 +157,7 @@ func (s *MapStats) UnmarshalJSON(data []byte) error {
 Weapons structs
 ***************/
 
+// WeaponStats provides stats aggregated by weapon type and name.
 type WeaponStats struct {
 	statsLoader[weaponTeamRoles, ubiGameModeWeaponsJSON]
 	statsMetadata
@@ -240,6 +245,7 @@ func newWeaponTypesMap(v *ubiWeaponTypesJSON) weaponTypesMap {
 Moving Point Average (Trend)
 ***************************/
 
+// MovingTrendStats provides stats without any specific aggregation, but with trends across a specific timeframe.
 type MovingTrendStats struct {
 	statsLoader[movingTrendTeamRoles, ubiTeamRolesJSON]
 	statsMetadata

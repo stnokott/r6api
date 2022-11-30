@@ -1,9 +1,14 @@
-# Disclaimer
-I don't have the time to maintain this repo properly.
-This is just for fun.
-Feel free to fork and do whatever you like with it.
+# r6api
+## Disclaimer
+- I don't have the time to maintain this repo properly.
+- This project is just for fun.
+- I am a Golang beginner, be kind
+- Feel free to fork and do whatever you like with it.
+- **I didn't have time to write tests, so use with caution!**
 
-**I didn't have time to write tests, so use with caution!**
+## Background information
+- reverse-engineered official Ubisoft API at https://www.ubisoft.com/de-de/game/rainbow-six/siege/stats
+- in parts inspired by [danielwerg/r6api.js](https://github.com/danielwerg/r6api.js)
 
 ## Example usage
 
@@ -13,7 +18,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	api "github.com/stnokott/r6api"
+	"github.com/stnokott/r6api"
 )
 
 func main() {
@@ -24,27 +29,27 @@ func main() {
 		PartsOrder:    []string{"time", "level", "name", "message"},
 		FieldsExclude: []string{"name"},
 	}
-	logger := zerolog.New(writer).Level(zerolog.DebugLevel).With().Timestamp().Str("name", "UbiAPI -").Logger()
+	logger := zerolog.New(writer).Level(zerolog.DebugLevel).With().Timestamp().Str("name", "R6API -").Logger()
 
-	email := "myubiemail"
-	password := "myubipassword"
+	email := "<myubiemail>"
+	password := "<myubipassword>"
 
 	// create API instance
-	a := api.NewUbiAPI(email, password, logger)
+	a := r6api.NewR6API(email, password, logger)
 
 	// resolve username to profile
-	profile, err := a.ResolveUser("MyR6Username")
+	profile, err := a.ResolveUser("<myubiusername>")
 	if err != nil {
 		logger.Fatal().Err(err).Msg("error resolving user")
 	}
 
-	// get ranked history for profile with history depth of 1
-	ranked, err := a.GetRankedHistory(profile, 1)
+	// get ranked history for profile with history depth of 2
+	ranked, err := a.GetRankedHistory(profile, 2)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("error getting ranked history")
 	}
-	// get last ranked season
-	r := ranked[0]
+	// get most-recent ranked season
+	r := ranked[1]
 
 	metadata, err := a.GetMetadata()
 	if err != nil {

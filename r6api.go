@@ -33,17 +33,18 @@ func (p *Profile) MarshalZerologObject(e *zerolog.Event) {
 	e.Discard()
 }
 
-type UbiAPI struct {
+type R6API struct {
 	authCredentials string
 	email           string
 	ticket          *auth.Ticket
 	logger          zerolog.Logger
 }
 
-func NewUbiAPI(email string, password string, logger zerolog.Logger) *UbiAPI {
+// NewR6API creates a new instance with the provided login credentials and logger.
+func NewR6API(email string, password string, logger zerolog.Logger) *R6API {
 	authInput := []byte(email + ":" + password)
 	authCredentials := base64.StdEncoding.EncodeToString(authInput)
-	return &UbiAPI{
+	return &R6API{
 		authCredentials: authCredentials,
 		email:           email,
 		ticket:          nil,
@@ -54,7 +55,9 @@ func NewUbiAPI(email string, password string, logger zerolog.Logger) *UbiAPI {
 const ubiLoginRequestURL string = "https://public-ubiservices.ubi.com/v3/profiles/sessions"
 const ubiAppIDAuth string = "39baebad-39e5-4552-8c25-2c9b919064e2"
 
-func (a *UbiAPI) Login() (err error) {
+// login performs login, caching the response ticket.
+// It does this regardless of whether a ticket is already cached, so make sure to check before, e.g. with checkAuthentication().
+func (a *R6API) login() (err error) {
 	a.logger.Debug().Msg("attempting login")
 	var body []byte
 	body, err = json.Marshal(map[string]string{"rememberMe": "true"})
@@ -81,7 +84,8 @@ func (a *UbiAPI) Login() (err error) {
 	return
 }
 
-func (a *UbiAPI) checkAuthentication() (err error) {
+// checkAuthentication ensures the API contains an authorized, non-expired ticket by using the cached ticket or logging in again if non-existing or expired.
+func (a *R6API) checkAuthentication() (err error) {
 	loginReason := ""
 	if a.ticket == nil {
 		var canLoad bool
@@ -111,12 +115,16 @@ func (a *UbiAPI) checkAuthentication() (err error) {
 
 	if loginReason != "" {
 		a.logger.Debug().Msgf("login required, reason: %s", loginReason)
-		err = a.Login()
+		err = a.login()
 	}
 	return
 }
 
-func (a *UbiAPI) requestAuthorized(url string, dst any) (err error) {
+// requestAuthorized executes an authorized request (i.e. with the corresponding auth headers) and attempts to unmarshal the response into dst.
+func (a *R6API) requestAuthorized(url string, dst any) (err error) {
+	if err = a.checkAuthentication(); err != nil {
+		return
+	}
 	var req *http.Request
 	req, err = http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -141,10 +149,8 @@ type ubiProfileResp struct {
 	} `json:"profiles"`
 }
 
-func (a *UbiAPI) ResolveUser(username string) (*Profile, error) {
-	if err := a.checkAuthentication(); err != nil {
-		return nil, err
-	}
+// ResolveUser attempts to resolve the provided username to a Profile instance which can then be used for other requests.
+func (a *R6API) ResolveUser(username string) (*Profile, error) {
 	a.logger.Debug().Str("username", username).Msg("resolving profile")
 	requestURL := fmt.Sprintf(ubiProfilesURLTemplate, url.QueryEscape(username))
 	var p ubiProfileResp
@@ -170,8 +176,8 @@ func (a *UbiAPI) ResolveUser(username string) (*Profile, error) {
 }
 
 // GetMetadata retrieves information about seasons, i.e. season slug or MMR bounds.
-// This is an expensive operation.
-func (a *UbiAPI) GetMetadata() (m *metadata.Metadata, err error) {
+// This is an expensive operation as it performs Javascript evaluations.
+func (a *R6API) GetMetadata() (m *metadata.Metadata, err error) {
 	var req *http.Request
 	req, err = http.NewRequest("GET", metadata.URL, nil)
 	if err != nil {
@@ -203,7 +209,9 @@ func (a *UbiAPI) GetMetadata() (m *metadata.Metadata, err error) {
 	return
 }
 
-func (a *UbiAPI) GetStats(profile *Profile, season string, dst stats.Provider) error {
+// GetStats retrieves statistics for a specific profile and season, loading the results into dst.
+// dst needs to implement stats.Provider, the preconfigured providers can be found in the stats package.
+func (a *R6API) GetStats(profile *Profile, season string, dst stats.Provider) error {
 	args := stats.UbiStatsURLParams{
 		ProfileID:   profile.ProfileID,
 		Aggregation: dst.AggregationType(),
@@ -227,14 +235,16 @@ func (a *UbiAPI) GetStats(profile *Profile, season string, dst stats.Provider) e
 	return nil
 }
 
-func (a *UbiAPI) GetRankedHistory(profile *Profile, numSeasons int8) (ranked.SkillHistory, error) {
+// GetRankedHistory returns a list of stats for the last numSeasons past ranked seasons.
+// The resulting list will be ordered historically, i.e. the most-recent season last.
+func (a *R6API) GetRankedHistory(profile *Profile, numSeasons uint8) (ranked.SkillHistory, error) {
 	args := ranked.UbiSkillURLParams{
 		ProfileID:      profile.ProfileID,
 		NumPastSeasons: numSeasons,
 	}
 	a.logger.Info().
 		Str("username", profile.Name).
-		Int8("seasons", numSeasons).
+		Uint8("seasons", numSeasons).
 		Msg("getting ranked history")
 	requestURLBytes := bytes.NewBuffer([]byte{})
 	if err := ranked.UbiSkillURLTemplate.Execute(requestURLBytes, args); err != nil {
