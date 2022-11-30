@@ -57,7 +57,7 @@ func main() {
 	}
 
 	// retrieve season slug for last ranked season
-	seasonSlug := metadata.SlugFromID(r.SeasonID)
+	seasonSlug := metadata.SeasonSlugFromID(r.SeasonID)
 	if seasonSlug == "" {
 		seasonSlug = "n/a"
 	}
