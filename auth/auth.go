@@ -1,4 +1,4 @@
-package api
+package auth
 
 import (
 	"encoding/json"
@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-type ticket struct {
+type Ticket struct {
 	Email      *string   `json:"email"`
 	Name       string    `json:"nameOnPlatform"`
 	ProfileID  string    `json:"profileId"`
@@ -15,13 +15,13 @@ type ticket struct {
 	Token      string    `json:"ticket"`
 }
 
-func (t *ticket) IsExpired() bool {
+func (t *Ticket) IsExpired() bool {
 	return time.Now().After(t.Expiration)
 }
 
 const ticketFile = "ticket.json"
 
-func (t *ticket) Save() (err error) {
+func (t *Ticket) Save() (err error) {
 	var data []byte
 	data, err = json.Marshal(t)
 	if err != nil {
@@ -44,7 +44,7 @@ func (t *ticket) Save() (err error) {
 	return
 }
 
-func canLoadTicket() (ok bool, err error) {
+func CanLoadTicket() (ok bool, err error) {
 	_, statErr := os.Stat(ticketFile)
 	if statErr != nil {
 		if os.IsNotExist(statErr) {
@@ -58,7 +58,7 @@ func canLoadTicket() (ok bool, err error) {
 	return
 }
 
-func loadTicket() (t *ticket, err error) {
+func LoadTicket() (t *Ticket, err error) {
 	var file *os.File
 	file, err = os.Open(ticketFile)
 	if err != nil {
@@ -71,7 +71,7 @@ func loadTicket() (t *ticket, err error) {
 		}
 	}()
 
-	t = new(ticket)
+	t = new(Ticket)
 	err = json.NewDecoder(file).Decode(t)
 	return
 }
