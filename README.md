@@ -1,3 +1,8 @@
+# Disclaimer
+I don't have the time to maintain this repo properly.
+This is just for fun.
+Feel free to fork and do whatever you like with it.
+
 ## Example usage
 
 ```go
