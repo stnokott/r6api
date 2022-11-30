@@ -1,4 +1,4 @@
-package api
+package r6api
 
 import (
 	"bytes"
@@ -10,9 +10,11 @@ import (
 	"net/url"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/stnokott/r6api/api/types/metadata"
-	"github.com/stnokott/r6api/api/types/ranked"
-	"github.com/stnokott/r6api/api/types/stats"
+	"github.com/stnokott/r6api/auth"
+	"github.com/stnokott/r6api/request"
+	"github.com/stnokott/r6api/types/metadata"
+	"github.com/stnokott/r6api/types/ranked"
+	"github.com/stnokott/r6api/types/stats"
 
 	"github.com/rs/zerolog"
 )
@@ -34,7 +36,7 @@ func (p *Profile) MarshalZerologObject(e *zerolog.Event) {
 type UbiAPI struct {
 	authCredentials string
 	email           string
-	ticket          *ticket
+	ticket          *auth.Ticket
 	logger          zerolog.Logger
 }
 
@@ -65,8 +67,8 @@ func (a *UbiAPI) Login() (err error) {
 	req.Header.Add("Authorization", "Basic "+a.authCredentials)
 	req.Header.Add("Content-Type", "application/json")
 
-	t := new(ticket)
-	err = requestJSON(req, t)
+	t := new(auth.Ticket)
+	err = request.JSON(req, t)
 	if err != nil {
 		return
 	}
@@ -83,12 +85,12 @@ func (a *UbiAPI) checkAuthentication() (err error) {
 	loginReason := ""
 	if a.ticket == nil {
 		var canLoad bool
-		canLoad, err = canLoadTicket()
+		canLoad, err = auth.CanLoadTicket()
 		if err != nil {
 			return
 		}
 		if canLoad {
-			t, errL := loadTicket()
+			t, errL := auth.LoadTicket()
 			if errL != nil {
 				err = errL
 				return
@@ -125,7 +127,7 @@ func (a *UbiAPI) requestAuthorized(url string, dst any) (err error) {
 	req.Header.Add("Expiration", a.ticket.Expiration.Format("2006-01-02T15:04:05Z"))
 	req.Header.Add("Authorization", "ubi_v1 t="+a.ticket.Token)
 
-	err = requestJSON(req, dst)
+	err = request.JSON(req, dst)
 	return
 }
 
@@ -179,7 +181,7 @@ func (a *UbiAPI) GetMetadata() (m *metadata.Metadata, err error) {
 
 	a.logger.Info().Msg("getting metadata")
 	var body io.ReadCloser
-	body, err = requestPlain(req)
+	body, err = request.Plain(req)
 	if err != nil {
 		return
 	}
@@ -232,7 +234,7 @@ func (a *UbiAPI) GetRankedHistory(profile *Profile, numSeasons int8) (ranked.Ski
 	}
 	a.logger.Info().
 		Str("username", profile.Name).
-		Int8("numSeasons", numSeasons).
+		Int8("seasons", numSeasons).
 		Msg("getting ranked history")
 	requestURLBytes := bytes.NewBuffer([]byte{})
 	if err := ranked.UbiSkillURLTemplate.Execute(requestURLBytes, args); err != nil {

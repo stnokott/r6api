@@ -1,4 +1,4 @@
-package api
+package request
 
 import (
 	"encoding/json"
@@ -14,7 +14,7 @@ type ubiErrResp struct {
 	Message   string      `json:"message"`
 }
 
-func requestPlain(r *http.Request) (io.ReadCloser, error) {
+func Plain(r *http.Request) (io.ReadCloser, error) {
 	resp, err := http.DefaultClient.Do(r)
 	if err != nil {
 		return nil, err
@@ -22,7 +22,7 @@ func requestPlain(r *http.Request) (io.ReadCloser, error) {
 	return resp.Body, nil
 }
 
-func requestJSON(r *http.Request, dst any) (err error) {
+func JSON(r *http.Request, dst any) (err error) {
 	r.Header.Add("User-Agent", "inofficial private non-commercial stats API (nfkottenhahn@web.de)")
 	r.Header.Add("Accept", "application/json")
 	var resp *http.Response
