@@ -14,7 +14,10 @@ type ubiErrResp struct {
 	Message   string      `json:"message"`
 }
 
+// Plain executes r with the default HTTP client and returns the plain body.
+// Remember to close it after reading.
 func Plain(r *http.Request) (io.ReadCloser, error) {
+	r.Header.Add("User-Agent", "inofficial private non-commercial stats API (nfkottenhahn@web.de)")
 	resp, err := http.DefaultClient.Do(r)
 	if err != nil {
 		return nil, err
@@ -22,6 +25,8 @@ func Plain(r *http.Request) (io.ReadCloser, error) {
 	return resp.Body, nil
 }
 
+// JSON executes r with the default HTTP client and performs API-related processing such as deserialization and error-checking.
+// If no errors occur, it attempts to unmarshal the response body into dst.
 func JSON(r *http.Request, dst any) (err error) {
 	r.Header.Add("User-Agent", "inofficial private non-commercial stats API (nfkottenhahn@web.de)")
 	r.Header.Add("Accept", "application/json")

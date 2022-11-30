@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// GetSkillHistory attempts to parse v into a SkillHistory instance.
 func GetSkillHistory(v *UbiSkillRecordsJSON) (SkillHistory, error) {
 	history := make(SkillHistory, len(v.SkillRecords))
 	for i, record := range v.SkillRecords {
@@ -32,6 +33,8 @@ func GetSkillHistory(v *UbiSkillRecordsJSON) (SkillHistory, error) {
 	return history, nil
 }
 
+// SkillHistory contains a list of season stats.
+// Should be ordered historically (i.e. most-recent season last).
 type SkillHistory []SeasonStats
 
 type SeasonStats struct {

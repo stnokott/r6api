@@ -12,6 +12,9 @@ import (
 
 const URL string = "https://www.ubisoft.com/de-de/game/rainbow-six/siege/stats/glossary/fa94e165-6328-4a9b-8581-81735ffaba27"
 
+// New creates a new instance, parsing scriptJS.
+// The parameter should be a Javascript string starting with "window.__PRELOADED_STATE__ = <JS object>".
+// This method should only be called internally.
 func New(scriptJS string) (*Metadata, error) {
 	vm := otto.New()
 	if _, err := vm.Run(strings.Replace(scriptJS, "window.__PRELOADED_STATE__", "state", 1)); err != nil {
