@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+
+before:
+  hooks:
+    - go mod tidy
+    - go mod verify
+changelog:
+  sort: asc
+  abbrev: -1
+  use: github
+  filters:
+    exclude:
+      - "^style"
+      - "^refactor"
+      - "^test"
+      - "^build"
+      - "^ci"
+      - "^bump"
+      - "^Merge pull request"
+  groups:
+    - title: Features
+      regexp: "^feat"
+      order: 0
+    - title: Bug Fixes
+      regexp: "^fix"
+    - title: Documentation
+      regexp: "^docs"
+    - title: Performance Optimization
+      regexp: "^perf"
+    - title: Others
+      order: 999
+release:
+  target_commitish: "{{ .Commit }}"
+  github:
+    owner: stnokott
+    name: r6api
+  name_template: "{{ .ProjectName }}-v{{ .Version }}"
