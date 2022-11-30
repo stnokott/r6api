@@ -36,4 +36,5 @@ release:
   github:
     owner: stnokott
     name: r6api
-  name_template: "{{ .ProjectName }}-v{{ .Version }}"
+  name_template: "v{{ .Version }}"
+  draft: true
