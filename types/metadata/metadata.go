@@ -104,11 +104,20 @@ func (m *Metadata) UnmarshalJSON(data []byte) error {
 	return errors.New("could not find required key in data")
 }
 
-// SlugFromID will return the name of the season with the provided ID or "" if unknown.
-func (m *Metadata) SlugFromID(seasonID int) string {
+// SeasonSlugFromID will return the slug of the season (e.g. "Y7S3") with the provided ID or "" if unknown.
+func (m *Metadata) SeasonSlugFromID(seasonID int) string {
 	if len(m.Seasons) < seasonID-1 {
 		return ""
 	} else {
 		return m.Seasons[seasonID-1].Slug
+	}
+}
+
+// SeasonNameFromID will return the name of the season (e.g. "Brutal Swarm") with the provided ID or "" if unknown.
+func (m *Metadata) SeasonNameFromID(seasonID int) string {
+	if len(m.Seasons) < seasonID-1 {
+		return ""
+	} else {
+		return m.Seasons[seasonID-1].Name
 	}
 }
