@@ -74,6 +74,7 @@ Summarized stats
 // SummarizedStats provides stats without any specific aggregation.
 type SummarizedStats struct {
 	statsLoader[SummarizedGameModeStats, ubiTeamRolesJSON]
+	SeasonSlug string
 	StatsMetadata
 }
 
@@ -94,7 +95,7 @@ func (s *SummarizedStats) UnmarshalJSON(data []byte) error {
 	return s.loadRawStats(data, s, s.loadTeamRole)
 }
 
-func (*SummarizedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *SummarizedGameModeStats) (err error) {
+func (s *SummarizedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *SummarizedGameModeStats) (err error) {
 	inputTeamRoles := [][]ubiTypedTeamRoleJSON{jsn.TeamRoles.Attack, jsn.TeamRoles.Defence}
 	outputTeamRoles := []**detailedStats{&stats.Attack, &stats.Defence}
 
@@ -112,6 +113,9 @@ func (*SummarizedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *SummarizedGam
 			return
 		}
 		*outputTeamRoles[i] = newDetailedTeamRoleStats(data)
+		if s.SeasonSlug == "" {
+			s.SeasonSlug = assembleSeasonSlug(data.ubiSeasonInfo)
+		}
 	}
 	return
 }
@@ -375,7 +379,6 @@ type reducedStats struct {
 
 type detailedStats struct {
 	reducedStats
-	SeasonSlug           string
 	MatchesPlayed        int
 	MatchesWon           int
 	MatchesLost          int
@@ -415,7 +418,6 @@ func newDetailedTeamRoleStats(data *ubiDetailedStatsJSON) *detailedStats {
 			RoundsWon:    data.RoundsWon,
 			RoundsLost:   data.RoundsLost,
 		},
-		SeasonSlug:           *data.SeasonYear + *data.SeasonNumber,
 		MatchesPlayed:        data.MatchesPlayed,
 		MatchesWon:           data.MatchesWon,
 		MatchesLost:          data.MatchesLost,
@@ -447,8 +449,21 @@ func newDetailedTeamRoleStats(data *ubiDetailedStatsJSON) *detailedStats {
 	}
 }
 
+func assembleSeasonSlug(v ubiSeasonInfo) string {
+	year := "??"
+	number := "??"
+	if v.SeasonYear != nil {
+		year = *v.SeasonYear
+	}
+	if v.SeasonNumber != nil {
+		number = *v.SeasonNumber
+	}
+	return year + number
+}
+
 type abstractNamedStats struct {
 	statsLoader[abstractNamedTeamRoles, ubiTeamRolesJSON]
+	SeasonSlug string
 	StatsMetadata
 }
 
@@ -462,7 +477,7 @@ type abstractNamedTeamRoleStats struct {
 	detailedStats
 }
 
-func (*abstractNamedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *abstractNamedTeamRoles) (err error) {
+func (s *abstractNamedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *abstractNamedTeamRoles) (err error) {
 	teamRole := [][]ubiTypedTeamRoleJSON{jsn.TeamRoles.Attack, jsn.TeamRoles.Defence}
 	resultFields := []*[]abstractNamedTeamRoleStats{&stats.Attack, &stats.Defence}
 
@@ -490,6 +505,9 @@ func (*abstractNamedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *abstractNa
 			resultTeamRoleData[j] = abstractNamedTeamRoleStats{
 				Name:          name,
 				detailedStats: *newDetailedTeamRoleStats(data),
+			}
+			if s.SeasonSlug == "" {
+				s.SeasonSlug = assembleSeasonSlug(data.ubiSeasonInfo)
 			}
 		}
 		*resultFields[i] = resultTeamRoleData
