@@ -120,6 +120,8 @@ func (a *R6API) checkAuthentication() (err error) {
 	return
 }
 
+const ubiAppIDStats string = "3587dcbb-7f81-457c-9781-0e3f29f6f56a"
+
 // requestAuthorized executes an authorized request (i.e. with the corresponding auth headers) and attempts to unmarshal the response into dst.
 func (a *R6API) requestAuthorized(url string, dst any) (err error) {
 	if err = a.checkAuthentication(); err != nil {
@@ -132,7 +134,7 @@ func (a *R6API) requestAuthorized(url string, dst any) (err error) {
 	}
 	req.Header.Add("Ubi-AppId", ubiAppIDStats)
 	req.Header.Add("Ubi-SessionId", a.ticket.SessionID)
-	req.Header.Add("Expiration", a.ticket.Expiration.Format("2006-01-02T15:04:05Z"))
+	req.Header.Add("Expiration", a.ticket.Expiration.Format("2006-01-02T15:04:05.999Z"))
 	req.Header.Add("Authorization", "ubi_v1 t="+a.ticket.Token)
 
 	err = request.JSON(req, dst)
@@ -140,7 +142,6 @@ func (a *R6API) requestAuthorized(url string, dst any) (err error) {
 }
 
 const ubiProfilesURLTemplate string = "https://public-ubiservices.ubi.com/v3/profiles?namesOnPlatform=%s&platformType=uplay"
-const ubiAppIDStats string = "39baebad-39e5-4552-8c25-2c9b919064e2"
 
 type ubiProfileResp struct {
 	Profiles []struct {
@@ -214,6 +215,7 @@ func (a *R6API) GetStats(profile *Profile, season string, dst stats.Provider) er
 	args := stats.UbiStatsURLParams{
 		ProfileID:   profile.ProfileID,
 		Aggregation: dst.AggregationType(),
+		View:        dst.ViewType(),
 		Season:      season,
 	}
 	a.logger.Info().

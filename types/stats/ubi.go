@@ -7,17 +7,17 @@ import (
 	"time"
 )
 
-// TODO: test view=seasonal
 // TODO: test mapName=??
 // TODO: test bombsite=??
 
 var UbiStatsURLTemplate = template.Must(template.New("statsURL").Parse(
-	"https://prod.datadev.ubisoft.com/v1/profiles/{{urlquery .ProfileID}}/playerstats?spaceId=5172a557-50b5-4665-b7db-e3f2e8c5041d&view=current&aggregation={{urlquery .Aggregation}}&gameMode=ranked,unranked,casual&platform=PC&teamRole=attacker,defender&seasons={{urlquery .Season}}",
+	"https://prod.datadev.ubisoft.com/v1/profiles/{{urlquery .ProfileID}}/playerstats?spaceId=5172a557-50b5-4665-b7db-e3f2e8c5041d&view={{urlquery .View}}&aggregation={{urlquery .Aggregation}}&gameMode=ranked,unranked,casual&platform=PC&teamRole=Attacker,Defender&seasons={{urlquery .Season}}",
 ))
 
 type UbiStatsURLParams struct {
 	ProfileID   string
 	Aggregation string
+	View        string
 	Season      string
 }
 
@@ -64,7 +64,7 @@ func (u *ubiTypedGameModeJSON) UnmarshalJSON(data []byte) error {
 	}
 
 	switch typed.Type {
-	case typeTeamRoles:
+	case typeTeamRoles, "":
 		u.Value = new(ubiTeamRolesJSON)
 	case typeTeamRoleWeapons:
 		u.Value = new(ubiGameModeWeaponsJSON)
@@ -85,15 +85,15 @@ Team Roles Stats Types
 // ////////////
 type ubiTeamRolesJSON struct {
 	TeamRoles struct {
-		Attack  []ubiTypedTeamRoleJSON `json:"attacker"`
-		Defence []ubiTypedTeamRoleJSON `json:"defender"`
+		Attack  []ubiTypedTeamRoleJSON `json:"Attacker"`
+		Defence []ubiTypedTeamRoleJSON `json:"Defender"`
 	} `json:"teamRoles"`
 }
 
 type teamRoleStatsType string
 
 const (
-	typeGeneralized teamRoleStatsType = "Generalized"
+	typeSeasonal    teamRoleStatsType = "Seasonal"
 	typeMovingPoint teamRoleStatsType = "Moving Point Average Trend"
 )
 
@@ -114,7 +114,7 @@ func (u *ubiTypedTeamRoleJSON) UnmarshalJSON(data []byte) error {
 	}
 
 	switch typed.Type {
-	case typeGeneralized:
+	case typeSeasonal:
 		u.Value = new(ubiDetailedStatsJSON)
 	case typeMovingPoint:
 		u.Value = new(ubiMovingTrendJSON)
@@ -219,6 +219,7 @@ type ubiReducedStatsJSON struct {
 
 type ubiDetailedStatsJSON struct {
 	StatsDetail *string `json:"statsDetail"`
+	ubiSeasonInfo
 	ubiReducedStatsJSON
 	MatchesPlayed        int          `json:"matchesPlayed"`
 	MatchesWon           int          `json:"matchesWon"`
@@ -248,4 +249,9 @@ type ubiDetailedStatsJSON struct {
 	DistanceTotal        float64      `json:"distanceTravelled"`
 	TimeAlivePerMatch    float64      `json:"timeAlivePerMatch"`
 	TimeDeadPerMatch     float64      `json:"timeDeadPerMatch"`
+}
+
+type ubiSeasonInfo struct {
+	SeasonYear   *string `json:"seasonYear"`
+	SeasonNumber *string `json:"seasonNumber"`
 }
