@@ -21,7 +21,7 @@ type Provider interface {
 	TeamRoleType() gameModeStatsType // type of team role to be used in URL query
 }
 
-type statsMetadata struct {
+type StatsMetadata struct {
 	TimeFrom time.Time
 	TimeTo   time.Time
 }
@@ -76,11 +76,11 @@ Summarized stats
 
 // SummarizedStats provides stats without any specific aggregation.
 type SummarizedStats struct {
-	statsLoader[summarizedGameModeStats, ubiTeamRolesJSON]
-	statsMetadata
+	statsLoader[SummarizedGameModeStats, ubiTeamRolesJSON]
+	StatsMetadata
 }
 
-type summarizedGameModeStats struct {
+type SummarizedGameModeStats struct {
 	Attack  *detailedStats
 	Defence *detailedStats
 }
@@ -97,7 +97,7 @@ func (s *SummarizedStats) UnmarshalJSON(data []byte) error {
 	return s.loadRawStats(data, s, s.loadTeamRole)
 }
 
-func (*SummarizedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *summarizedGameModeStats) (err error) {
+func (*SummarizedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *SummarizedGameModeStats) (err error) {
 	inputTeamRoles := [][]ubiTypedTeamRoleJSON{jsn.TeamRoles.Attack, jsn.TeamRoles.Defence}
 	outputTeamRoles := []**detailedStats{&stats.Attack, &stats.Defence}
 
@@ -159,23 +159,23 @@ Weapons structs
 
 // WeaponStats provides stats aggregated by weapon type and name.
 type WeaponStats struct {
-	statsLoader[weaponTeamRoles, ubiGameModeWeaponsJSON]
-	statsMetadata
+	statsLoader[WeaponTeamRoles, ubiGameModeWeaponsJSON]
+	StatsMetadata
 }
 
-type weaponTeamRoles struct {
-	Attack  *weaponTypes
-	Defence *weaponTypes
+type WeaponTeamRoles struct {
+	Attack  *WeaponTypes
+	Defence *WeaponTypes
 }
 
-type weaponTypes struct {
-	PrimaryWeapons   weaponTypesMap
-	SecondaryWeapons weaponTypesMap
+type WeaponTypes struct {
+	PrimaryWeapons   WeaponTypesMap
+	SecondaryWeapons WeaponTypesMap
 }
 
-type weaponTypesMap map[string][]weaponNamedStats
+type WeaponTypesMap map[string][]WeaponNamedStats
 
-type weaponNamedStats struct {
+type WeaponNamedStats struct {
 	WeaponName string
 	reducedStats
 	RoundsWithKill      float64
@@ -195,17 +195,17 @@ func (s *WeaponStats) UnmarshalJSON(data []byte) error {
 	return s.loadRawStats(data, s, s.loadTeamRole)
 }
 
-func (*WeaponStats) loadTeamRole(jsn *ubiGameModeWeaponsJSON, stats *weaponTeamRoles) (err error) {
+func (*WeaponStats) loadTeamRole(jsn *ubiGameModeWeaponsJSON, stats *WeaponTeamRoles) (err error) {
 	inputTeamRoles := []*ubiWeaponSlotsJSON{jsn.TeamRoles.Attack, jsn.TeamRoles.Defence}
-	outputTeamRoles := []**weaponTypes{&stats.Attack, &stats.Defence}
+	outputTeamRoles := []**WeaponTypes{&stats.Attack, &stats.Defence}
 
 	for i, inputTeamRole := range inputTeamRoles {
 		if inputTeamRole == nil {
 			continue
 		}
-		outputTeamRoleData := new(weaponTypes)
+		outputTeamRoleData := new(WeaponTypes)
 		inputWeaponSlots := []*ubiWeaponTypesJSON{inputTeamRole.WeaponSlots.Primary, inputTeamRole.WeaponSlots.Secondary}
-		outputWeaponSlots := []*weaponTypesMap{&outputTeamRoleData.PrimaryWeapons, &outputTeamRoleData.SecondaryWeapons}
+		outputWeaponSlots := []*WeaponTypesMap{&outputTeamRoleData.PrimaryWeapons, &outputTeamRoleData.SecondaryWeapons}
 		for j, inputWeaponSlot := range inputWeaponSlots {
 			if inputWeaponSlot == nil {
 				continue
@@ -217,12 +217,12 @@ func (*WeaponStats) loadTeamRole(jsn *ubiGameModeWeaponsJSON, stats *weaponTeamR
 	return
 }
 
-func newWeaponTypesMap(v *ubiWeaponTypesJSON) weaponTypesMap {
-	result := weaponTypesMap{}
+func newWeaponTypesMap(v *ubiWeaponTypesJSON) WeaponTypesMap {
+	result := WeaponTypesMap{}
 	for _, weaponType := range v.WeaponTypes {
-		weaponTypeStats := make([]weaponNamedStats, len(weaponType.Weapons))
+		weaponTypeStats := make([]WeaponNamedStats, len(weaponType.Weapons))
 		for j, weaponStats := range weaponType.Weapons {
-			weaponTypeStats[j] = weaponNamedStats{
+			weaponTypeStats[j] = WeaponNamedStats{
 				WeaponName: weaponStats.WeaponName,
 				reducedStats: reducedStats{
 					Headshots:    weaponStats.Headshots,
@@ -247,43 +247,43 @@ Moving Point Average (Trend)
 
 // MovingTrendStats provides stats without any specific aggregation, but with trends across a specific timeframe.
 type MovingTrendStats struct {
-	statsLoader[movingTrendTeamRoles, ubiTeamRolesJSON]
-	statsMetadata
-	Casual   *movingTrendTeamRoles
-	Unranked *movingTrendTeamRoles
-	Ranked   *movingTrendTeamRoles
+	statsLoader[MovingTrendTeamRoles, ubiTeamRolesJSON]
+	StatsMetadata
+	Casual   *MovingTrendTeamRoles
+	Unranked *MovingTrendTeamRoles
+	Ranked   *MovingTrendTeamRoles
 }
 
-type movingTrendTeamRoles struct {
-	Attack  *movingTrend
-	Defence *movingTrend
+type MovingTrendTeamRoles struct {
+	Attack  *MovingTrend
+	Defence *MovingTrend
 }
 
-type movingTrend struct {
+type MovingTrend struct {
 	MovingPoints           int
-	DistancePerRound       movingTrendEntry
-	HeadshotPercentage     movingTrendEntry
-	KillDeathRatio         movingTrendEntry
-	KillsPerRound          movingTrendEntry
-	RatioTimeAlivePerMatch movingTrendEntry
-	RoundsSurvived         movingTrendEntry
-	RoundsWithKill         movingTrendEntry
-	RoundsWithKOST         movingTrendEntry
-	RoundsWithMultikill    movingTrendEntry
-	RoundsWithOpeningDeath movingTrendEntry
-	RoundsWithOpeningKill  movingTrendEntry
-	WinLossRatio           movingTrendEntry
+	DistancePerRound       MovingTrendEntry
+	HeadshotPercentage     MovingTrendEntry
+	KillDeathRatio         MovingTrendEntry
+	KillsPerRound          MovingTrendEntry
+	RatioTimeAlivePerMatch MovingTrendEntry
+	RoundsSurvived         MovingTrendEntry
+	RoundsWithKill         MovingTrendEntry
+	RoundsWithKOST         MovingTrendEntry
+	RoundsWithMultikill    MovingTrendEntry
+	RoundsWithOpeningDeath MovingTrendEntry
+	RoundsWithOpeningKill  MovingTrendEntry
+	WinLossRatio           MovingTrendEntry
 }
 
-type movingTrendEntry struct {
+type MovingTrendEntry struct {
 	Low     float64
 	Average float64
 	High    float64
-	Actuals movingTrendPoints
-	Trend   movingTrendPoints
+	Actuals MovingTrendPoints
+	Trend   MovingTrendPoints
 }
 
-type movingTrendPoints []float64
+type MovingTrendPoints []float64
 
 func (s *MovingTrendStats) AggregationType() string {
 	return "movingpoint"
@@ -297,9 +297,9 @@ func (s *MovingTrendStats) UnmarshalJSON(data []byte) error {
 	return s.loadRawStats(data, s, s.loadTeamRole)
 }
 
-func (*MovingTrendStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *movingTrendTeamRoles) (err error) {
+func (*MovingTrendStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *MovingTrendTeamRoles) (err error) {
 	inputTeamRoles := [][]ubiTypedTeamRoleJSON{jsn.TeamRoles.Attack, jsn.TeamRoles.Defence}
-	outputTeamRoles := []**movingTrend{&stats.Attack, &stats.Defence}
+	outputTeamRoles := []**MovingTrend{&stats.Attack, &stats.Defence}
 
 	for i, teamRole := range inputTeamRoles {
 		if len(teamRole) == 0 {
@@ -319,8 +319,8 @@ func (*MovingTrendStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *movingTrendT
 	return
 }
 
-func newMovingTrendStats(v *ubiMovingTrendJSON) *movingTrend {
-	return &movingTrend{
+func newMovingTrendStats(v *ubiMovingTrendJSON) *MovingTrend {
+	return &MovingTrend{
 		MovingPoints:           v.MovingPoints,
 		DistancePerRound:       newMovingTrendEntry(v.DistancePerRound),
 		HeadshotPercentage:     newMovingTrendEntry(v.HeadshotPercentage),
@@ -337,17 +337,17 @@ func newMovingTrendStats(v *ubiMovingTrendJSON) *movingTrend {
 	}
 }
 
-func newMovingTrendEntry(v ubiMovingTrendEntryJSON) movingTrendEntry {
-	result := movingTrendEntry{
+func newMovingTrendEntry(v ubiMovingTrendEntryJSON) MovingTrendEntry {
+	result := MovingTrendEntry{
 		Low:     v.Low,
 		Average: v.Average,
 		High:    v.High,
 	}
 	inputFields := []ubiMovingTrendPoints{v.Actuals, v.Trend}
-	outputFields := []*movingTrendPoints{&result.Actuals, &result.Trend}
+	outputFields := []*MovingTrendPoints{&result.Actuals, &result.Trend}
 
 	for i, inputField := range inputFields {
-		points := make(movingTrendPoints, len(inputField))
+		points := make(MovingTrendPoints, len(inputField))
 		for j, v := range inputField {
 			points[j-1] = v // -1 since index in JSON starts at 1
 		}
@@ -442,7 +442,7 @@ func newDetailedTeamRoleStats(data *ubiDetailedStatsJSON) *detailedStats {
 
 type abstractNamedStats struct {
 	statsLoader[abstractNamedTeamRoles, ubiTeamRolesJSON]
-	statsMetadata
+	StatsMetadata
 }
 
 type abstractNamedTeamRoles struct {

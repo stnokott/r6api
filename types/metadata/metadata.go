@@ -38,17 +38,17 @@ func New(scriptJS string) (*Metadata, error) {
 }
 
 type Metadata struct {
-	Seasons []season
+	Seasons []Season
 }
 
-type season struct {
+type Season struct {
 	Name      string
 	Slug      string
 	StartDate time.Time
-	Ranks     []rank
+	Ranks     []Rank
 }
 
-type rank struct {
+type Rank struct {
 	MinMMR int    `json:"min"`
 	MaxMMR int    `json:"max"`
 	Slug   string `json:"slug"`
@@ -68,7 +68,7 @@ type seasonsJSON struct {
 			StartDate time.Time `json:"startDate"`
 			RankList  struct {
 				Data struct {
-					Ranks []rank `json:"ranks"`
+					Ranks []Rank `json:"ranks"`
 				} `json:"data"`
 			} `json:"rankList"`
 		} `json:"seasons"`
@@ -88,9 +88,9 @@ func (m *Metadata) UnmarshalJSON(data []byte) error {
 			if err := json.Unmarshal(v, &seasonsJSON); err != nil {
 				return err
 			}
-			seasons := make([]season, len(seasonsJSON.Content.Seasons))
+			seasons := make([]Season, len(seasonsJSON.Content.Seasons))
 			for i, seasonJSON := range seasonsJSON.Content.Seasons {
-				seasons[i] = season{
+				seasons[i] = Season{
 					Name:      seasonJSON.LocalizedItems.Title,
 					Slug:      seasonJSON.Slug,
 					StartDate: seasonJSON.StartDate,
