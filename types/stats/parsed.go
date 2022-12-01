@@ -3,7 +3,6 @@ package stats
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 )
 
 type GameMode string
@@ -21,11 +20,6 @@ type Provider interface {
 	ViewType() string        // type of view (e.g. "summary") to be used in URL query
 }
 
-type StatsMetadata struct {
-	TimeFrom time.Time
-	TimeTo   time.Time
-}
-
 type statsLoader[TGameMode any, TJSON any] struct {
 	Casual   *TGameMode
 	Unranked *TGameMode
@@ -37,6 +31,7 @@ func (l *statsLoader[TGameMode, TJSON]) loadRawStats(data []byte, dst Provider, 
 	if err = json.Unmarshal(data, &raw); err != nil {
 		return
 	}
+
 	root := raw.Platforms.PC.GameModes
 	if root.StatsCasual == nil && root.StatsUnranked == nil && root.StatsRanked == nil {
 		return
@@ -75,7 +70,6 @@ Summarized stats
 type SummarizedStats struct {
 	statsLoader[SummarizedGameModeStats, ubiTeamRolesJSON]
 	SeasonSlug string
-	StatsMetadata
 }
 
 type SummarizedGameModeStats struct {
@@ -169,7 +163,6 @@ Weapons structs
 // WeaponStats provides stats aggregated by weapon type and name.
 type WeaponStats struct {
 	statsLoader[WeaponTeamRoles, ubiGameModeWeaponsJSON]
-	StatsMetadata
 }
 
 type WeaponTeamRoles struct {
@@ -257,10 +250,6 @@ Moving Point Average (Trend)
 // MovingTrendStats provides stats without any specific aggregation, but with trends across a specific timeframe.
 type MovingTrendStats struct {
 	statsLoader[MovingTrendTeamRoles, ubiTeamRolesJSON]
-	StatsMetadata
-	Casual   *MovingTrendTeamRoles
-	Unranked *MovingTrendTeamRoles
-	Ranked   *MovingTrendTeamRoles
 }
 
 type MovingTrendTeamRoles struct {
@@ -464,7 +453,6 @@ func assembleSeasonSlug(v ubiSeasonInfo) string {
 type abstractNamedStats struct {
 	statsLoader[abstractNamedTeamRoles, ubiTeamRolesJSON]
 	SeasonSlug string
-	StatsMetadata
 }
 
 type abstractNamedTeamRoles struct {

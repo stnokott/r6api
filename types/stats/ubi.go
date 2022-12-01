@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"text/template"
-	"time"
 )
 
 // TODO: test mapName=??
@@ -22,8 +21,6 @@ type UbiStatsURLParams struct {
 }
 
 type ubiStatsResponseJSON struct {
-	StartDate ubiTime `json:"startDate"`
-	EndDate   ubiTime `json:"endDate"`
 	Platforms struct {
 		PC struct {
 			GameModes ubiGameModesJSON `json:"gameModes"`
@@ -193,17 +190,6 @@ type ubiMovingTrendPoints map[int]float64
 /***************
 Generic structs
 ****************/
-
-const ubiDateFormat = "20060102"
-
-type ubiTime struct {
-	time.Time
-}
-
-func (t *ubiTime) UnmarshalJSON(b []byte) (err error) {
-	t.Time, err = time.Parse(ubiDateFormat, string(b))
-	return
-}
 
 type ubiJSONFloat struct {
 	Value float64 `json:"value"`
