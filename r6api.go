@@ -205,7 +205,6 @@ func (a *R6API) GetMetadata() (m *metadata.Metadata, err error) {
 		return
 	}
 	m, err = metadata.New(doc.Find("script").Text())
-	a.logger.Info().Msg("...done")
 	return
 }
 
@@ -230,8 +229,6 @@ func (a *R6API) GetStats(profile *Profile, season string, dst stats.Provider) er
 	if err := a.requestAuthorized(requestURLBytes.String(), dst); err != nil {
 		return err
 	}
-
-	a.logger.Info().Msg("...done")
 	return nil
 }
 
@@ -260,6 +257,5 @@ func (a *R6API) GetRankedHistory(profile *Profile, numSeasons uint8) (ranked.Ski
 	if err != nil {
 		return nil, err
 	}
-	a.logger.Info().Msg("...done")
 	return result, nil
 }
