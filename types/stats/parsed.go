@@ -17,8 +17,8 @@ const (
 // Provider should be implemented by statistics structs to enable it to be unmarshalled properly into the corresponding struct.
 type Provider interface {
 	json.Unmarshaler
-	AggregationType() string         // type of aggregation to be used in URL query
-	TeamRoleType() gameModeStatsType // type of team role to be used in URL query
+	AggregationType() string // type of aggregation (e.g. "operators") to be used in URL query
+	ViewType() string        // type of view (e.g. "summary") to be used in URL query
 }
 
 type StatsMetadata struct {
@@ -46,9 +46,6 @@ func (l *statsLoader[TGameMode, TJSON]) loadRawStats(data []byte, dst Provider, 
 	for i, gameModeJSON := range gameModeJSONs {
 		if gameModeJSON == nil {
 			continue
-		}
-		if gameModeJSON.Type != dst.TeamRoleType() {
-			return fmt.Errorf("unexpected game mode stats type: '%s', expected '%s'", gameModeJSON.Type, dst.TeamRoleType())
 		}
 		jsn, ok := gameModeJSON.Value.(*TJSON)
 		if !ok {
@@ -89,8 +86,8 @@ func (s *SummarizedStats) AggregationType() string {
 	return "summary"
 }
 
-func (s *SummarizedStats) TeamRoleType() gameModeStatsType {
-	return typeTeamRoles
+func (s *SummarizedStats) ViewType() string {
+	return "seasonal"
 }
 
 func (s *SummarizedStats) UnmarshalJSON(data []byte) error {
@@ -132,6 +129,10 @@ func (s *OperatorStats) AggregationType() string {
 	return "operators"
 }
 
+func (s *OperatorStats) ViewType() string {
+	return "seasonal"
+}
+
 func (s *OperatorStats) UnmarshalJSON(data []byte) error {
 	return s.loadRawStats(data, s, s.loadTeamRole)
 }
@@ -147,6 +148,10 @@ type MapStats struct {
 
 func (s *MapStats) AggregationType() string {
 	return "maps"
+}
+
+func (s *MapStats) ViewType() string {
+	return "seasonal"
 }
 
 func (s *MapStats) UnmarshalJSON(data []byte) error {
@@ -187,8 +192,8 @@ func (s *WeaponStats) AggregationType() string {
 	return "weapons"
 }
 
-func (s *WeaponStats) TeamRoleType() gameModeStatsType {
-	return typeTeamRoleWeapons
+func (s *WeaponStats) ViewType() string {
+	return "current" // does not seem to support seasonal view
 }
 
 func (s *WeaponStats) UnmarshalJSON(data []byte) error {
@@ -289,8 +294,8 @@ func (s *MovingTrendStats) AggregationType() string {
 	return "movingpoint"
 }
 
-func (s *MovingTrendStats) TeamRoleType() gameModeStatsType {
-	return typeTeamRoles
+func (s *MovingTrendStats) ViewType() string {
+	return "current" // does not seem to support seasonal
 }
 
 func (s *MovingTrendStats) UnmarshalJSON(data []byte) error {
@@ -370,6 +375,7 @@ type reducedStats struct {
 
 type detailedStats struct {
 	reducedStats
+	SeasonSlug           string
 	MatchesPlayed        int
 	MatchesWon           int
 	MatchesLost          int
@@ -409,6 +415,7 @@ func newDetailedTeamRoleStats(data *ubiDetailedStatsJSON) *detailedStats {
 			RoundsWon:    data.RoundsWon,
 			RoundsLost:   data.RoundsLost,
 		},
+		SeasonSlug:           *data.SeasonYear + *data.SeasonNumber,
 		MatchesPlayed:        data.MatchesPlayed,
 		MatchesWon:           data.MatchesWon,
 		MatchesLost:          data.MatchesLost,
@@ -453,10 +460,6 @@ type abstractNamedTeamRoles struct {
 type abstractNamedTeamRoleStats struct {
 	Name string
 	detailedStats
-}
-
-func (s *abstractNamedStats) TeamRoleType() gameModeStatsType {
-	return typeTeamRoles
 }
 
 func (*abstractNamedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *abstractNamedTeamRoles) (err error) {
