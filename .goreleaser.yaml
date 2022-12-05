@@ -28,8 +28,8 @@ changelog:
       regexp: "^refactor"
     - title: Performance Optimization
       regexp: "^perf"
-    - title: Build
-      regexp: "^build"
+    - title: Dependencies
+      regexp: "^build(deps)"
     - title: Pipeline
       regexp: "^ci"
     - title: Others
