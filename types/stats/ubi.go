@@ -10,7 +10,7 @@ import (
 // TODO: test bombsite=??
 
 var UbiStatsURLTemplate = template.Must(template.New("statsURL").Parse(
-	"https://prod.datadev.ubisoft.com/v1/profiles/{{urlquery .ProfileID}}/playerstats?spaceId=5172a557-50b5-4665-b7db-e3f2e8c5041d&view={{urlquery .View}}&aggregation={{urlquery .Aggregation}}&gameMode=ranked,unranked,casual&platform=PC&teamRole=Attacker,Defender&seasons={{urlquery .Season}}",
+	"https://prod.datadev.ubisoft.com/v1/users/{{urlquery .ProfileID}}/playerstats?spaceId=5172a557-50b5-4665-b7db-e3f2e8c5041d&view={{urlquery .View}}&aggregation={{urlquery .Aggregation}}&gameMode=ranked,unranked,casual&platformGroup=PC&teamRole=Attacker,Defender&seasons={{urlquery .Season}}",
 ))
 
 type UbiStatsURLParams struct {
@@ -21,11 +21,13 @@ type UbiStatsURLParams struct {
 }
 
 type ubiStatsResponseJSON struct {
-	Platforms struct {
-		PC struct {
-			GameModes ubiGameModesJSON `json:"gameModes"`
-		} `json:"PC"`
-	} `json:"platforms"`
+	ProfileData map[string]struct {
+		Platforms struct {
+			PC struct {
+				GameModes ubiGameModesJSON `json:"gameModes"`
+			} `json:"PC"`
+		} `json:"platforms"`
+	} `json:"profileData"`
 }
 
 type ubiGameModesJSON struct {

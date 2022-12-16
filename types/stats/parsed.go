@@ -31,8 +31,11 @@ func (l *statsLoader[TGameMode, TJSON]) loadRawStats(data []byte, dst Provider, 
 	if err = json.Unmarshal(data, &raw); err != nil {
 		return
 	}
-
-	root := raw.Platforms.PC.GameModes
+	var root ubiGameModesJSON
+	// should be only one key
+	for k := range raw.ProfileData {
+		root = raw.ProfileData[k].Platforms.PC.GameModes
+	}
 	if root.StatsCasual == nil && root.StatsUnranked == nil && root.StatsRanked == nil {
 		return
 	}
@@ -57,7 +60,9 @@ func (l *statsLoader[TGameMode, TJSON]) loadRawStats(data []byte, dst Provider, 
 		default:
 			return fmt.Errorf("got invalid game mode: %s", gameModes[i])
 		}
-		return loadTeamRoles(jsn, stats)
+		if err = loadTeamRoles(jsn, stats); err != nil {
+			return
+		}
 	}
 	return
 }
