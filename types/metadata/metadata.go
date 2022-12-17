@@ -106,18 +106,18 @@ func (m *Metadata) UnmarshalJSON(data []byte) error {
 
 // SeasonSlugFromID will return the slug of the season (e.g. "Y7S3") with the provided ID or "" if unknown.
 func (m *Metadata) SeasonSlugFromID(seasonID int) string {
-	if len(m.Seasons) < seasonID-1 {
+	if len(m.Seasons) < seasonID {
 		return ""
 	} else {
-		return m.Seasons[seasonID-1].Slug
+		return m.Seasons[seasonID].Slug
 	}
 }
 
 // SeasonNameFromID will return the name of the season (e.g. "Brutal Swarm") with the provided ID or "" if unknown.
 func (m *Metadata) SeasonNameFromID(seasonID int) string {
-	if len(m.Seasons) < seasonID-1 {
+	if len(m.Seasons) < seasonID {
 		return ""
 	} else {
-		return m.Seasons[seasonID-1].Name
+		return m.Seasons[seasonID].Name
 	}
 }
