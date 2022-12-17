@@ -40,4 +40,3 @@ release:
     owner: stnokott
     name: r6api
   name_template: "v{{ .Version }}"
-  draft: true
