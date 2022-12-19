@@ -17,7 +17,7 @@ type Ticket struct {
 
 // IsExpired checks if this ticket expired by comparing its expiration with the current time.
 func (t *Ticket) IsExpired() bool {
-	return time.Now().After(t.Expiration)
+	return time.Now().Add(5 * time.Minute).After(t.Expiration)
 }
 
 const ticketFile = "ticket.json"
