@@ -1,6 +1,6 @@
 commitizen:
   name: cz_conventional_commits
   tag_format: v$version
-  version: 0.3.5
+  version: 0.3.6
   version_files:
   - constants/constants.go:const VERSION
