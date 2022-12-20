@@ -35,7 +35,7 @@ func GetSkillHistory(v *UbiSkillRecordsJSON) (SkillHistory, error) {
 
 // SkillHistory contains a list of season stats.
 // Should be ordered historically (i.e. most-recent season last).
-type SkillHistory []SeasonStats
+type SkillHistory []*SeasonStats
 
 type SeasonStats struct {
 	SeasonID             int
@@ -60,8 +60,8 @@ type SeasonStats struct {
 	Wins                 int
 }
 
-func NewSeasonStats(v ubiPlayerSkillJSON) SeasonStats {
-	return SeasonStats{
+func NewSeasonStats(v ubiPlayerSkillJSON) *SeasonStats {
+	return &SeasonStats{
 		SeasonID:             v.Season,
 		Abandons:             v.Abandons,
 		Deaths:               v.Deaths,
