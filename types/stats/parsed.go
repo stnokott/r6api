@@ -78,8 +78,8 @@ type SummarizedStats struct {
 }
 
 type SummarizedGameModeStats struct {
-	Attack  *detailedStats
-	Defence *detailedStats
+	Attack  *DetailedStats
+	Defence *DetailedStats
 }
 
 func (s *SummarizedStats) AggregationType() string {
@@ -96,7 +96,7 @@ func (s *SummarizedStats) UnmarshalJSON(data []byte) error {
 
 func (s *SummarizedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *SummarizedGameModeStats) (err error) {
 	inputTeamRoles := [][]ubiTypedTeamRoleJSON{jsn.TeamRoles.Attack, jsn.TeamRoles.Defence}
-	outputTeamRoles := []**detailedStats{&stats.Attack, &stats.Defence}
+	outputTeamRoles := []**DetailedStats{&stats.Attack, &stats.Defence}
 
 	for i, inputTeamRole := range inputTeamRoles {
 		if len(inputTeamRole) == 0 {
@@ -371,7 +371,7 @@ type reducedStats struct {
 	RoundsLost   int
 }
 
-type detailedStats struct {
+type DetailedStats struct {
 	reducedStats
 	MatchesPlayed        int
 	MatchesWon           int
@@ -403,8 +403,8 @@ type detailedStats struct {
 	TimeDeadPerMatch     float64
 }
 
-func newDetailedTeamRoleStats(data *ubiDetailedStatsJSON) *detailedStats {
-	return &detailedStats{
+func newDetailedTeamRoleStats(data *ubiDetailedStatsJSON) *DetailedStats {
+	return &DetailedStats{
 		reducedStats: reducedStats{
 			Headshots:    data.Headshots,
 			Kills:        data.Kills,
@@ -467,7 +467,7 @@ type abstractNamedTeamRoles struct {
 
 type abstractNamedTeamRoleStats struct {
 	Name string
-	detailedStats
+	DetailedStats
 }
 
 func (s *abstractNamedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *abstractNamedTeamRoles) (err error) {
@@ -497,7 +497,7 @@ func (s *abstractNamedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *abstract
 			}
 			resultTeamRoleData[j] = abstractNamedTeamRoleStats{
 				Name:          name,
-				detailedStats: *newDetailedTeamRoleStats(data),
+				DetailedStats: *newDetailedTeamRoleStats(data),
 			}
 			if s.SeasonSlug == "" {
 				s.SeasonSlug = assembleSeasonSlug(data.ubiSeasonInfo)
