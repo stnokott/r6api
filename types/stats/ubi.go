@@ -10,7 +10,7 @@ import (
 // TODO: test bombsite=??
 
 var UbiStatsURLTemplate = template.Must(template.New("statsURL").Parse(
-	"https://prod.datadev.ubisoft.com/v1/users/{{urlquery .ProfileID}}/playerstats?spaceId=5172a557-50b5-4665-b7db-e3f2e8c5041d&view={{urlquery .View}}&aggregation={{urlquery .Aggregation}}&gameMode=ranked,unranked,casual&platformGroup=PC&teamRole=Attacker,Defender&seasons={{urlquery .Season}}",
+	"https://prod.datadev.ubisoft.com/v1/users/{{urlquery .ProfileID}}/playerstats?spaceId=5172a557-50b5-4665-b7db-e3f2e8c5041d&view={{urlquery .View}}&aggregation={{urlquery .Aggregation}}&gameMode=all,ranked,unranked,casual&platformGroup=PC&teamRole=all,Attacker,Defender&seasons={{urlquery .Season}}",
 ))
 
 type UbiStatsURLParams struct {
@@ -31,6 +31,7 @@ type ubiStatsResponseJSON struct {
 }
 
 type ubiGameModesJSON struct {
+	StatsAll      *ubiTypedGameModeJSON `json:"all"`
 	StatsCasual   *ubiTypedGameModeJSON `json:"casual"`
 	StatsUnranked *ubiTypedGameModeJSON `json:"unranked"`
 	StatsRanked   *ubiTypedGameModeJSON `json:"ranked"`
@@ -84,6 +85,7 @@ Team Roles Stats Types
 // ////////////
 type ubiTeamRolesJSON struct {
 	TeamRoles struct {
+		All     []ubiTypedTeamRoleJSON `json:"all"`
 		Attack  []ubiTypedTeamRoleJSON `json:"Attacker"`
 		Defence []ubiTypedTeamRoleJSON `json:"Defender"`
 	} `json:"teamRoles"`
@@ -132,6 +134,7 @@ Team Role Weapons
 */
 type ubiGameModeWeaponsJSON struct {
 	TeamRoles struct {
+		All     *ubiWeaponSlotsJSON `json:"all"`
 		Attack  *ubiWeaponSlotsJSON `json:"attacker"`
 		Defence *ubiWeaponSlotsJSON `json:"defender"`
 	} `json:"teamRoles"`
