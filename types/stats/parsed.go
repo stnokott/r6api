@@ -80,6 +80,7 @@ type SummarizedStats struct {
 type SummarizedGameModeStats struct {
 	Attack  *DetailedStats
 	Defence *DetailedStats
+	matchStats
 }
 
 func (s *SummarizedStats) AggregationType() string {
@@ -114,6 +115,10 @@ func (s *SummarizedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *SummarizedG
 		*outputTeamRoles[i] = newDetailedTeamRoleStats(data)
 		if s.SeasonSlug == "" {
 			s.SeasonSlug = assembleSeasonSlug(data.ubiSeasonInfo)
+		}
+
+		if stats.matchStats.MatchesPlayed == 0 {
+			stats.matchStats = newMatchStats(data)
 		}
 	}
 	return
@@ -371,11 +376,14 @@ type reducedStats struct {
 	RoundsLost   int
 }
 
+type matchStats struct {
+	MatchesPlayed int
+	MatchesWon    int
+	MatchesLost   int
+}
+
 type DetailedStats struct {
 	reducedStats
-	MatchesPlayed        int
-	MatchesWon           int
-	MatchesLost          int
 	MinutesPlayed        int
 	Assists              int
 	Deaths               int
@@ -412,9 +420,6 @@ func newDetailedTeamRoleStats(data *ubiDetailedStatsJSON) *DetailedStats {
 			RoundsWon:    data.RoundsWon,
 			RoundsLost:   data.RoundsLost,
 		},
-		MatchesPlayed:        data.MatchesPlayed,
-		MatchesWon:           data.MatchesWon,
-		MatchesLost:          data.MatchesLost,
 		MinutesPlayed:        data.MinutesPlayed,
 		Assists:              data.Assists,
 		Deaths:               data.Deaths,
@@ -463,6 +468,7 @@ type abstractNamedStats struct {
 type abstractNamedTeamRoles struct {
 	Attack  []abstractNamedTeamRoleStats
 	Defence []abstractNamedTeamRoleStats
+	matchStats
 }
 
 type abstractNamedTeamRoleStats struct {
@@ -502,8 +508,20 @@ func (s *abstractNamedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *abstract
 			if s.SeasonSlug == "" {
 				s.SeasonSlug = assembleSeasonSlug(data.ubiSeasonInfo)
 			}
+
+			if stats.matchStats.MatchesPlayed == 0 {
+				stats.matchStats = newMatchStats(data)
+			}
 		}
 		*resultFields[i] = resultTeamRoleData
 	}
 	return
+}
+
+func newMatchStats(jsn *ubiDetailedStatsJSON) matchStats {
+	return matchStats{
+		MatchesPlayed: jsn.MatchesPlayed,
+		MatchesWon:    jsn.MatchesWon,
+		MatchesLost:   jsn.MatchesLost,
+	}
 }
