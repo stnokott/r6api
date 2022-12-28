@@ -8,6 +8,7 @@ import (
 type GameMode string
 
 const (
+	ALL      GameMode = "all"
 	CASUAL   GameMode = "casual"
 	UNRANKED GameMode = "unranked"
 	RANKED   GameMode = "ranked"
@@ -21,6 +22,7 @@ type Provider interface {
 }
 
 type statsLoader[TGameMode any, TJSON any] struct {
+	All      *TGameMode
 	Casual   *TGameMode
 	Unranked *TGameMode
 	Ranked   *TGameMode
@@ -36,11 +38,11 @@ func (l *statsLoader[TGameMode, TJSON]) loadRawStats(data []byte, dst Provider, 
 	for k := range raw.ProfileData {
 		root = raw.ProfileData[k].Platforms.PC.GameModes
 	}
-	if root.StatsCasual == nil && root.StatsUnranked == nil && root.StatsRanked == nil {
+	if root.StatsAll == nil && root.StatsCasual == nil && root.StatsUnranked == nil && root.StatsRanked == nil {
 		return
 	}
-	gameModeJSONs := []*ubiTypedGameModeJSON{root.StatsCasual, root.StatsUnranked, root.StatsRanked}
-	gameModes := []GameMode{CASUAL, UNRANKED, RANKED}
+	gameModeJSONs := []*ubiTypedGameModeJSON{root.StatsAll, root.StatsCasual, root.StatsUnranked, root.StatsRanked}
+	gameModes := []GameMode{ALL, CASUAL, UNRANKED, RANKED}
 	for i, gameModeJSON := range gameModeJSONs {
 		if gameModeJSON == nil {
 			continue
@@ -51,6 +53,8 @@ func (l *statsLoader[TGameMode, TJSON]) loadRawStats(data []byte, dst Provider, 
 		}
 		stats := new(TGameMode)
 		switch gameModes[i] {
+		case ALL:
+			l.All = stats
 		case CASUAL:
 			l.Casual = stats
 		case UNRANKED:
@@ -78,6 +82,7 @@ type SummarizedStats struct {
 }
 
 type SummarizedGameModeStats struct {
+	All     *DetailedStats
 	Attack  *DetailedStats
 	Defence *DetailedStats
 	matchStats
@@ -96,8 +101,8 @@ func (s *SummarizedStats) UnmarshalJSON(data []byte) error {
 }
 
 func (s *SummarizedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *SummarizedGameModeStats) (err error) {
-	inputTeamRoles := [][]ubiTypedTeamRoleJSON{jsn.TeamRoles.Attack, jsn.TeamRoles.Defence}
-	outputTeamRoles := []**DetailedStats{&stats.Attack, &stats.Defence}
+	inputTeamRoles := [][]ubiTypedTeamRoleJSON{jsn.TeamRoles.All, jsn.TeamRoles.Attack, jsn.TeamRoles.Defence}
+	outputTeamRoles := []**DetailedStats{&stats.All, &stats.Attack, &stats.Defence}
 
 	for i, inputTeamRole := range inputTeamRoles {
 		if len(inputTeamRole) == 0 {
@@ -176,6 +181,7 @@ type WeaponStats struct {
 }
 
 type WeaponTeamRoles struct {
+	All     *WeaponTypes
 	Attack  *WeaponTypes
 	Defence *WeaponTypes
 }
@@ -208,8 +214,8 @@ func (s *WeaponStats) UnmarshalJSON(data []byte) error {
 }
 
 func (*WeaponStats) loadTeamRole(jsn *ubiGameModeWeaponsJSON, stats *WeaponTeamRoles) (err error) {
-	inputTeamRoles := []*ubiWeaponSlotsJSON{jsn.TeamRoles.Attack, jsn.TeamRoles.Defence}
-	outputTeamRoles := []**WeaponTypes{&stats.Attack, &stats.Defence}
+	inputTeamRoles := []*ubiWeaponSlotsJSON{jsn.TeamRoles.All, jsn.TeamRoles.Attack, jsn.TeamRoles.Defence}
+	outputTeamRoles := []**WeaponTypes{&stats.All, &stats.Attack, &stats.Defence}
 
 	for i, inputTeamRole := range inputTeamRoles {
 		if inputTeamRole == nil {
@@ -263,6 +269,7 @@ type MovingTrendStats struct {
 }
 
 type MovingTrendTeamRoles struct {
+	All     *MovingTrend
 	Attack  *MovingTrend
 	Defence *MovingTrend
 }
@@ -306,8 +313,8 @@ func (s *MovingTrendStats) UnmarshalJSON(data []byte) error {
 }
 
 func (*MovingTrendStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *MovingTrendTeamRoles) (err error) {
-	inputTeamRoles := [][]ubiTypedTeamRoleJSON{jsn.TeamRoles.Attack, jsn.TeamRoles.Defence}
-	outputTeamRoles := []**MovingTrend{&stats.Attack, &stats.Defence}
+	inputTeamRoles := [][]ubiTypedTeamRoleJSON{jsn.TeamRoles.All, jsn.TeamRoles.Attack, jsn.TeamRoles.Defence}
+	outputTeamRoles := []**MovingTrend{&stats.All, &stats.Attack, &stats.Defence}
 
 	for i, teamRole := range inputTeamRoles {
 		if len(teamRole) == 0 {
@@ -466,6 +473,7 @@ type abstractNamedStats struct {
 }
 
 type abstractNamedTeamRoles struct {
+	All     []abstractNamedTeamRoleStats
 	Attack  []abstractNamedTeamRoleStats
 	Defence []abstractNamedTeamRoleStats
 	matchStats
@@ -477,8 +485,8 @@ type abstractNamedTeamRoleStats struct {
 }
 
 func (s *abstractNamedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *abstractNamedTeamRoles) (err error) {
-	teamRole := [][]ubiTypedTeamRoleJSON{jsn.TeamRoles.Attack, jsn.TeamRoles.Defence}
-	resultFields := []*[]abstractNamedTeamRoleStats{&stats.Attack, &stats.Defence}
+	teamRole := [][]ubiTypedTeamRoleJSON{jsn.TeamRoles.All, jsn.TeamRoles.Attack, jsn.TeamRoles.Defence}
+	resultFields := []*[]abstractNamedTeamRoleStats{&stats.All, &stats.Attack, &stats.Defence}
 
 	for i, teamRoleData := range teamRole {
 		if len(teamRoleData) == 0 {
