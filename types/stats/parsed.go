@@ -135,7 +135,7 @@ Operator stats
 
 // OperatorStats provides stats aggregated by operator.
 type OperatorStats struct {
-	abstractNamedStats
+	NamedStats
 }
 
 func (s *OperatorStats) AggregationType() string {
@@ -156,7 +156,7 @@ Map stats
 
 // MapStats provides stats aggregated by map.
 type MapStats struct {
-	abstractNamedStats
+	NamedStats
 }
 
 func (s *MapStats) AggregationType() string {
@@ -467,32 +467,32 @@ func assembleSeasonSlug(v ubiSeasonInfo) string {
 	return year + number
 }
 
-type abstractNamedStats struct {
-	statsLoader[abstractNamedTeamRoles, ubiTeamRolesJSON]
+type NamedStats struct {
+	statsLoader[NamedTeamRoles, ubiTeamRolesJSON]
 	SeasonSlug string
 }
 
-type abstractNamedTeamRoles struct {
-	All     []abstractNamedTeamRoleStats
-	Attack  []abstractNamedTeamRoleStats
-	Defence []abstractNamedTeamRoleStats
+type NamedTeamRoles struct {
+	All     []NamedTeamRoleStats
+	Attack  []NamedTeamRoleStats
+	Defence []NamedTeamRoleStats
 	matchStats
 }
 
-type abstractNamedTeamRoleStats struct {
+type NamedTeamRoleStats struct {
 	Name string
 	DetailedStats
 }
 
-func (s *abstractNamedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *abstractNamedTeamRoles) (err error) {
+func (s *NamedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *NamedTeamRoles) (err error) {
 	teamRole := [][]ubiTypedTeamRoleJSON{jsn.TeamRoles.All, jsn.TeamRoles.Attack, jsn.TeamRoles.Defence}
-	resultFields := []*[]abstractNamedTeamRoleStats{&stats.All, &stats.Attack, &stats.Defence}
+	resultFields := []*[]NamedTeamRoleStats{&stats.All, &stats.Attack, &stats.Defence}
 
 	for i, teamRoleData := range teamRole {
 		if len(teamRoleData) == 0 {
 			continue
 		}
-		resultTeamRoleData := make([]abstractNamedTeamRoleStats, len(teamRoleData))
+		resultTeamRoleData := make([]NamedTeamRoleStats, len(teamRoleData))
 		for j, teamRoleStats := range teamRoleData {
 			data, ok := teamRoleStats.Value.(*ubiDetailedStatsJSON)
 			if !ok {
@@ -509,7 +509,7 @@ func (s *abstractNamedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *abstract
 			} else {
 				name = *data.StatsDetail
 			}
-			resultTeamRoleData[j] = abstractNamedTeamRoleStats{
+			resultTeamRoleData[j] = NamedTeamRoleStats{
 				Name:          name,
 				DetailedStats: *newDetailedTeamRoleStats(data),
 			}
