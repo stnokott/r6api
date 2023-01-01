@@ -84,8 +84,8 @@ func (a *R6API) login() (err error) {
 	return
 }
 
-// checkAuthentication ensures the API contains an authorized, non-expired ticket by using the cached ticket or logging in again if non-existing or expired.
-func (a *R6API) checkAuthentication() (err error) {
+// EnsureAuth ensures the API contains an authorized, non-expired ticket by using the cached ticket or logging in again if non-existing or expired.
+func (a *R6API) EnsureAuth() (err error) {
 	loginReason := ""
 	if a.ticket == nil {
 		var canLoad bool
@@ -124,7 +124,7 @@ const ubiAppIDStats string = "3587dcbb-7f81-457c-9781-0e3f29f6f56a"
 
 // requestAuthorized executes an authorized request (i.e. with the corresponding auth headers) and attempts to unmarshal the response into dst.
 func (a *R6API) requestAuthorized(url string, dst any) (err error) {
-	if err = a.checkAuthentication(); err != nil {
+	if err = a.EnsureAuth(); err != nil {
 		return
 	}
 	var req *http.Request
