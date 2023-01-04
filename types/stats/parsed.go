@@ -455,6 +455,100 @@ func newDetailedTeamRoleStats(data *ubiDetailedStatsJSON) *DetailedStats {
 	}
 }
 
+func newTotalDetailedTeamRoleStats(data []ubiTypedTeamRoleJSON) (*DetailedStats, error) {
+	v := &DetailedStats{
+		reducedStats: reducedStats{
+			Headshots:    0,
+			Kills:        0,
+			RoundsPlayed: 0,
+			RoundsWon:    0,
+			RoundsLost:   0,
+		},
+		MinutesPlayed:        0,
+		Assists:              0,
+		Deaths:               0,
+		KillsPerRound:        0,
+		MeleeKills:           0,
+		TeamKills:            0,
+		HeadshotPercentage:   0,
+		EntryDeaths:          0,
+		EntryDeathTrades:     0,
+		EntryKills:           0,
+		EntryKillTrades:      0,
+		Trades:               0,
+		Revives:              0,
+		RoundsSurvived:       0,
+		RoundsWithKill:       0,
+		RoundsWithMultikill:  0,
+		RoundsWithAce:        0,
+		RoundsWithClutch:     0,
+		RoundsWithKOST:       0,
+		RoundsWithEntryDeath: 0,
+		RoundsWithEntryKill:  0,
+		DistancePerRound:     0,
+		DistanceTotal:        0,
+		TimeAlivePerMatch:    0,
+		TimeDeadPerMatch:     0,
+	}
+
+	count := float64(len(data))
+	for _, entry := range data {
+		casted, ok := entry.Value.(*ubiDetailedStatsJSON)
+		if !ok {
+			return nil, fmt.Errorf(
+				"team role data (%T) could not be cast to required struct (%T)",
+				entry.Value,
+				ubiDetailedStatsJSON{},
+			)
+		}
+		v.Headshots += casted.Headshots
+		v.Kills += casted.Kills
+		v.RoundsPlayed += casted.RoundsPlayed
+		v.RoundsWon += casted.RoundsWon
+		v.RoundsLost += casted.RoundsLost
+		v.MinutesPlayed += casted.MinutesPlayed
+		v.Assists += casted.Assists
+		v.Deaths += casted.Deaths
+		v.KillsPerRound += casted.KillsPerRound.Value
+		v.MeleeKills += casted.MeleeKills
+		v.TeamKills += casted.TeamKills
+		v.HeadshotPercentage += casted.HeadshotPercentage.Value
+		v.EntryDeaths += casted.EntryDeaths
+		v.EntryDeathTrades += casted.EntryDeathTrades
+		v.EntryKills += casted.EntryKills
+		v.EntryKillTrades += casted.EntryKillTrades
+		v.Trades += casted.Trades
+		v.Revives += casted.Revives
+		v.RoundsSurvived += casted.RoundsSurvived.Value
+		v.RoundsWithKill += casted.RoundsWithKill.Value
+		v.RoundsWithMultikill += casted.RoundsWithKill.Value
+		v.RoundsWithAce += casted.RoundsWithAce.Value
+		v.RoundsWithClutch += casted.RoundsWithClutch.Value
+		v.RoundsWithKOST += casted.RoundsWithKOST.Value
+		v.RoundsWithEntryDeath += casted.RoundsWithEntryDeath.Value
+		v.RoundsWithEntryKill += casted.RoundsWithEntryKill.Value
+		v.DistancePerRound += casted.DistancePerRound
+		v.DistanceTotal += casted.DistanceTotal
+		v.TimeAlivePerMatch += casted.TimeAlivePerMatch
+		v.TimeDeadPerMatch += casted.TimeDeadPerMatch
+	}
+
+	v.KillsPerRound /= count
+	v.HeadshotPercentage /= count
+	v.RoundsSurvived /= count
+	v.RoundsWithKill /= count
+	v.RoundsWithMultikill /= count
+	v.RoundsWithAce /= count
+	v.RoundsWithClutch /= count
+	v.RoundsWithKOST /= count
+	v.RoundsWithEntryDeath /= count
+	v.RoundsWithEntryKill /= count
+	v.DistancePerRound /= count
+	v.TimeAlivePerMatch /= count
+	v.TimeDeadPerMatch /= count
+	return v, nil
+}
+
 func assembleSeasonSlug(v ubiSeasonInfo) string {
 	year := "??"
 	number := "??"
@@ -472,28 +566,35 @@ type NamedStats struct {
 	SeasonSlug string
 }
 
-type NamedTeamRoles struct {
-	All     []NamedTeamRoleStats
-	Attack  []NamedTeamRoleStats
-	Defence []NamedTeamRoleStats
-	matchStats
-}
+type NamedTeamRoleStats map[string]DetailedStats
 
-type NamedTeamRoleStats struct {
-	Name string
-	DetailedStats
+type NamedTeamRoles struct {
+	All     NamedTeamRoleStats
+	Attack  NamedTeamRoleStats
+	Defence NamedTeamRoleStats
+	matchStats
 }
 
 func (s *NamedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *NamedTeamRoles) (err error) {
 	teamRole := [][]ubiTypedTeamRoleJSON{jsn.TeamRoles.All, jsn.TeamRoles.Attack, jsn.TeamRoles.Defence}
-	resultFields := []*[]NamedTeamRoleStats{&stats.All, &stats.Attack, &stats.Defence}
+	resultFields := []*NamedTeamRoleStats{&stats.All, &stats.Attack, &stats.Defence}
 
 	for i, teamRoleData := range teamRole {
 		if len(teamRoleData) == 0 {
 			continue
 		}
-		resultTeamRoleData := make([]NamedTeamRoleStats, len(teamRoleData))
-		for j, teamRoleStats := range teamRoleData {
+		resultTeamRoleData := make(NamedTeamRoleStats, len(teamRoleData)+1)
+
+		// calculate total
+		var totalData *DetailedStats
+		totalData, err = newTotalDetailedTeamRoleStats(teamRoleData)
+		if err != nil {
+			return
+		}
+		resultTeamRoleData["all"] = *totalData
+
+		// calculate named
+		for _, teamRoleStats := range teamRoleData {
 			data, ok := teamRoleStats.Value.(*ubiDetailedStatsJSON)
 			if !ok {
 				err = fmt.Errorf(
@@ -509,10 +610,7 @@ func (s *NamedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *NamedTeamRoles) 
 			} else {
 				name = *data.StatsDetail
 			}
-			resultTeamRoleData[j] = NamedTeamRoleStats{
-				Name:          name,
-				DetailedStats: *newDetailedTeamRoleStats(data),
-			}
+			resultTeamRoleData[name] = *newDetailedTeamRoleStats(data)
 			if s.SeasonSlug == "" {
 				s.SeasonSlug = assembleSeasonSlug(data.ubiSeasonInfo)
 			}
@@ -523,6 +621,7 @@ func (s *NamedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *NamedTeamRoles) 
 		}
 		*resultFields[i] = resultTeamRoleData
 	}
+
 	return
 }
 
