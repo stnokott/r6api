@@ -591,7 +591,7 @@ func (s *NamedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *NamedTeamRoles) 
 		if err != nil {
 			return
 		}
-		resultTeamRoleData["all"] = *totalData
+		resultTeamRoleData["All"] = *totalData
 
 		// calculate named
 		for _, teamRoleStats := range teamRoleData {
