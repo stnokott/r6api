@@ -2,6 +2,7 @@ package stats
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 )
 
@@ -38,9 +39,7 @@ func (l *statsLoader[TGameMode, TJSON]) loadRawStats(data []byte, dst Provider, 
 	for k := range raw.ProfileData {
 		root = raw.ProfileData[k].Platforms.PC.GameModes
 	}
-	if root.StatsAll == nil && root.StatsCasual == nil && root.StatsUnranked == nil && root.StatsRanked == nil {
-		return
-	}
+
 	gameModeJSONs := []*ubiTypedGameModeJSON{root.StatsAll, root.StatsCasual, root.StatsUnranked, root.StatsRanked}
 	gameModes := []GameMode{ALL, CASUAL, UNRANKED, RANKED}
 	for i, gameModeJSON := range gameModeJSONs {
@@ -156,7 +155,13 @@ Map stats
 
 // MapStats provides stats aggregated by map.
 type MapStats struct {
-	NamedStats
+	statsLoader[map[string]NamedMapStatDetails, ubiTeamRolesJSON]
+	SeasonSlug string
+}
+
+type NamedMapStatDetails struct {
+	matchStats
+	DetailedStats
 }
 
 func (s *MapStats) AggregationType() string {
@@ -167,8 +172,38 @@ func (s *MapStats) ViewType() string {
 	return "seasonal"
 }
 
-func (s *MapStats) UnmarshalJSON(data []byte) error {
+func (s *MapStats) UnmarshalJSON(data []byte) (err error) {
 	return s.loadRawStats(data, s, s.loadTeamRole)
+}
+
+func (s *MapStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *map[string]NamedMapStatDetails) (err error) {
+	inputTeamRole := jsn.TeamRoles.All
+
+	if len(inputTeamRole) == 0 {
+		return errors.New("no input data for ALL team role")
+	}
+	mapStats := map[string]NamedMapStatDetails{}
+	for _, mapData := range inputTeamRole {
+		data, ok := mapData.Value.(*ubiDetailedStatsJSON)
+		if !ok {
+			err = fmt.Errorf(
+				"team role data (%T) could not be cast to required struct (%T)",
+				mapData.Value,
+				ubiDetailedStatsJSON{},
+			)
+			return
+		}
+		mapStats[*data.StatsDetail] = NamedMapStatDetails{
+			DetailedStats: *newDetailedTeamRoleStats(data),
+			matchStats:    newMatchStats(data),
+		}
+		if s.SeasonSlug == "" {
+			s.SeasonSlug = assembleSeasonSlug(data.ubiSeasonInfo)
+		}
+	}
+	*stats = mapStats
+
+	return
 }
 
 /**************
@@ -572,7 +607,6 @@ type NamedTeamRoles struct {
 	All     NamedTeamRoleStats
 	Attack  NamedTeamRoleStats
 	Defence NamedTeamRoleStats
-	matchStats
 }
 
 func (s *NamedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *NamedTeamRoles) (err error) {
@@ -613,10 +647,6 @@ func (s *NamedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *NamedTeamRoles) 
 			resultTeamRoleData[name] = *newDetailedTeamRoleStats(data)
 			if s.SeasonSlug == "" {
 				s.SeasonSlug = assembleSeasonSlug(data.ubiSeasonInfo)
-			}
-
-			if stats.matchStats.MatchesPlayed == 0 {
-				stats.matchStats = newMatchStats(data)
 			}
 		}
 		*resultFields[i] = resultTeamRoleData
