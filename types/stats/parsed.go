@@ -34,11 +34,7 @@ func (l *statsLoader[TGameMode, TJSON]) loadRawStats(data []byte, dst Provider, 
 	if err = json.Unmarshal(data, &raw); err != nil {
 		return
 	}
-	var root ubiGameModesJSON
-	// should be only one key
-	for k := range raw.ProfileData {
-		root = raw.ProfileData[k].Platforms.PC.GameModes
-	}
+	root := raw.ProfileData[raw.UserID].Platforms.PC.GameModes
 
 	gameModeJSONs := []*ubiTypedGameModeJSON{root.StatsAll, root.StatsCasual, root.StatsUnranked, root.StatsRanked}
 	gameModes := []GameMode{ALL, CASUAL, UNRANKED, RANKED}

@@ -28,6 +28,7 @@ type ubiStatsResponseJSON struct {
 			} `json:"PC"`
 		} `json:"platforms"`
 	} `json:"profileData"`
+	UserID string `json:"userId"`
 }
 
 type ubiGameModesJSON struct {
