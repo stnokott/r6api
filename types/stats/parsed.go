@@ -112,7 +112,7 @@ func (s *SummarizedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *SummarizedG
 			)
 			return
 		}
-		*outputTeamRoles[i] = newDetailedTeamRoleStats(data)
+		*outputTeamRoles[i] = newDetailedStats(data)
 		if s.SeasonSlug == "" {
 			s.SeasonSlug = assembleSeasonSlug(data.ubiSeasonInfo)
 		}
@@ -158,6 +158,7 @@ type MapStats struct {
 type NamedMapStatDetails struct {
 	matchStats
 	DetailedStats
+	Bombsites *BombsiteGamemodeStats
 }
 
 func (s *MapStats) AggregationType() string {
@@ -190,7 +191,7 @@ func (s *MapStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *map[string]NamedMa
 			return
 		}
 		mapStats[*data.StatsDetail] = NamedMapStatDetails{
-			DetailedStats: *newDetailedTeamRoleStats(data),
+			DetailedStats: *newDetailedStats(data),
 			matchStats:    newMatchStats(data),
 		}
 		if s.SeasonSlug == "" {
@@ -199,6 +200,70 @@ func (s *MapStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *map[string]NamedMa
 	}
 	*stats = mapStats
 
+	return
+}
+
+/*************
+Bombsite stats
+**************/
+
+// BombsiteStats provides stats aggregated by map.
+type BombsiteStats struct {
+	statsLoader[BombsiteGamemodeStats, ubiTeamRolesJSON]
+	SeasonSlug string
+}
+
+type BombsiteGamemodeStats struct {
+	All     []BombsiteTeamRoleStats
+	Attack  []BombsiteTeamRoleStats
+	Defence []BombsiteTeamRoleStats
+}
+
+type BombsiteTeamRoleStats struct {
+	DetailedStats
+	Name string
+}
+
+func (s *BombsiteStats) AggregationType() string {
+	return "bombsites"
+}
+
+func (s *BombsiteStats) ViewType() string {
+	return "current"
+}
+
+func (s *BombsiteStats) UnmarshalJSON(data []byte) (err error) {
+	return s.loadRawStats(data, s, s.loadTeamRole)
+}
+
+func (s *BombsiteStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *BombsiteGamemodeStats) (err error) {
+	inputTeamRoles := [][]ubiTypedTeamRoleJSON{jsn.TeamRoles.All, jsn.TeamRoles.Attack, jsn.TeamRoles.Defence}
+	outputTeamRoles := []*[]BombsiteTeamRoleStats{&stats.All, &stats.Attack, &stats.Defence}
+
+	for i, inputTeamRole := range inputTeamRoles {
+		if inputTeamRole == nil {
+			continue
+		}
+		outputTeamRoleData := make([]BombsiteTeamRoleStats, len(inputTeamRole))
+
+		for j, inputData := range inputTeamRole {
+			data, ok := inputData.Value.(*ubiDetailedStatsJSON)
+			if !ok {
+				err = fmt.Errorf(
+					"team role data (%T) could not be cast to required struct (%T)",
+					inputData.Value,
+					ubiDetailedStatsJSON{},
+				)
+				return
+			}
+			outputTeamRoleData[j] = BombsiteTeamRoleStats{
+				DetailedStats: *newDetailedStats(data),
+				Name:          *data.StatsDetail,
+			}
+		}
+
+		*outputTeamRoles[i] = outputTeamRoleData
+	}
 	return
 }
 
@@ -222,10 +287,11 @@ type WeaponTypes struct {
 	SecondaryWeapons WeaponTypesMap
 }
 
-type WeaponTypesMap map[string][]WeaponNamedStats
+type WeaponTypesMap map[string]WeaponNamesMap
+
+type WeaponNamesMap map[string]WeaponNamedStats
 
 type WeaponNamedStats struct {
-	WeaponName string
 	reducedStats
 	RoundsWithKill      float64
 	RoundsWithMultikill float64
@@ -244,7 +310,7 @@ func (s *WeaponStats) UnmarshalJSON(data []byte) error {
 	return s.loadRawStats(data, s, s.loadTeamRole)
 }
 
-func (*WeaponStats) loadTeamRole(jsn *ubiGameModeWeaponsJSON, stats *WeaponTeamRoles) (err error) {
+func (s *WeaponStats) loadTeamRole(jsn *ubiGameModeWeaponsJSON, stats *WeaponTeamRoles) (err error) {
 	inputTeamRoles := []*ubiWeaponSlotsJSON{jsn.TeamRoles.All, jsn.TeamRoles.Attack, jsn.TeamRoles.Defence}
 	outputTeamRoles := []**WeaponTypes{&stats.All, &stats.Attack, &stats.Defence}
 
@@ -269,10 +335,9 @@ func (*WeaponStats) loadTeamRole(jsn *ubiGameModeWeaponsJSON, stats *WeaponTeamR
 func newWeaponTypesMap(v *ubiWeaponTypesJSON) WeaponTypesMap {
 	result := WeaponTypesMap{}
 	for _, weaponType := range v.WeaponTypes {
-		weaponTypeStats := make([]WeaponNamedStats, len(weaponType.Weapons))
-		for j, weaponStats := range weaponType.Weapons {
-			weaponTypeStats[j] = WeaponNamedStats{
-				WeaponName: weaponStats.WeaponName,
+		weaponTypeStats := make(WeaponNamesMap, len(weaponType.Weapons))
+		for _, weaponStats := range weaponType.Weapons {
+			weaponTypeStats[weaponStats.WeaponName] = WeaponNamedStats{
 				reducedStats: reducedStats{
 					Headshots:    weaponStats.Headshots,
 					Kills:        weaponStats.Kills,
@@ -449,7 +514,7 @@ type DetailedStats struct {
 	TimeDeadPerMatch     float64
 }
 
-func newDetailedTeamRoleStats(data *ubiDetailedStatsJSON) *DetailedStats {
+func newDetailedStats(data *ubiDetailedStatsJSON) *DetailedStats {
 	return &DetailedStats{
 		reducedStats: reducedStats{
 			Headshots:    data.Headshots,
@@ -640,7 +705,7 @@ func (s *NamedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *NamedTeamRoles) 
 			} else {
 				name = *data.StatsDetail
 			}
-			resultTeamRoleData[name] = *newDetailedTeamRoleStats(data)
+			resultTeamRoleData[name] = *newDetailedStats(data)
 			if s.SeasonSlug == "" {
 				s.SeasonSlug = assembleSeasonSlug(data.ubiSeasonInfo)
 			}

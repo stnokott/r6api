@@ -209,29 +209,87 @@ func (a *R6API) GetMetadata() (m *metadata.Metadata, err error) {
 	return
 }
 
+func assembleRequestURL(profile *Profile, provider stats.Provider, season string) (string, error) {
+	requestURLBytes := bytes.NewBuffer([]byte{})
+	args := stats.UbiStatsURLParams{
+		ProfileID:   profile.ProfileID,
+		Aggregation: provider.AggregationType(),
+		View:        provider.ViewType(),
+		Season:      season,
+	}
+	if err := stats.UbiStatsURLTemplate.Execute(requestURLBytes, args); err != nil {
+		return "", err
+	}
+	return requestURLBytes.String(), nil
+}
+
 // GetStats retrieves statistics for a specific profile and season, loading the results into dst.
 // dst needs to implement stats.Provider, the preconfigured providers can be found in the stats package.
 func (a *R6API) GetStats(profile *Profile, season string, dst stats.Provider) error {
-	args := stats.UbiStatsURLParams{
-		ProfileID:   profile.ProfileID,
-		Aggregation: dst.AggregationType(),
-		View:        dst.ViewType(),
-		Season:      season,
-	}
 	a.logger.Info().
 		Str("username", profile.Name).
-		Str("type", args.Aggregation).
+		Str("type", dst.AggregationType()).
 		Str("season", season).
 		Msg("getting stats")
-	requestURLBytes := bytes.NewBuffer([]byte{})
-	if err := stats.UbiStatsURLTemplate.Execute(requestURLBytes, args); err != nil {
+	requestURL, err := assembleRequestURL(profile, dst, season)
+	if err != nil {
 		return err
 	}
 
-	if err := a.requestAuthorized(requestURLBytes.String(), dst); err != nil {
+	if err := a.requestAuthorized(requestURL, dst); err != nil {
 		return err
 	}
+
+	if mapStats, isMapStats := dst.(*stats.MapStats); isMapStats {
+		return a.enrichMapStats(mapStats, profile, season)
+	}
 	return nil
+}
+
+// enrichMapStats adds bombsite stats to the map stats
+func (a *R6API) enrichMapStats(data *stats.MapStats, profile *Profile, season string) (err error) {
+	a.logger.Info().
+		Str("username", profile.Name).
+		Str("type", data.AggregationType()).
+		Str("season", season).
+		Msg("enriching map stats")
+	gameModes := []*map[string]stats.NamedMapStatDetails{data.All, data.Casual, data.Unranked, data.Ranked}
+	for i, gameMode := range gameModes {
+		if gameMode == nil {
+			continue
+		}
+		for mapName, mapStats := range *gameMode {
+			if mapStats.MatchesPlayed == 0 {
+				continue
+			}
+			bombsiteStats := new(stats.BombsiteStats)
+			var baseURL string
+			baseURL, err = assembleRequestURL(profile, bombsiteStats, season)
+			if err != nil {
+				return
+			}
+			requestURL := baseURL + "&maps=" + url.QueryEscape(mapName)
+			if err = a.requestAuthorized(requestURL, bombsiteStats); err != nil {
+				return
+			}
+
+			s := (*gameMode)[mapName]
+			switch i {
+			case 0:
+				s.Bombsites = bombsiteStats.All
+			case 1:
+				s.Bombsites = bombsiteStats.Casual
+			case 2:
+				s.Bombsites = bombsiteStats.Unranked
+			case 3:
+				s.Bombsites = bombsiteStats.Ranked
+			default:
+				panic("please check gameModes slice length and amend switch-case accordingly")
+			}
+			(*gameMode)[mapName] = s
+		}
+	}
+	return
 }
 
 // GetRankedHistory returns a list of stats for the last numSeasons past ranked seasons.
