@@ -6,9 +6,6 @@ import (
 	"text/template"
 )
 
-// TODO: test mapName=??
-// TODO: test bombsite=??
-
 var UbiStatsURLTemplate = template.Must(template.New("statsURL").Parse(
 	"https://prod.datadev.ubisoft.com/v1/users/{{urlquery .ProfileID}}/playerstats?spaceId=5172a557-50b5-4665-b7db-e3f2e8c5041d&view={{urlquery .View}}&aggregation={{urlquery .Aggregation}}&gameMode=all,ranked,unranked,casual&platformGroup=PC&teamRole=all,Attacker,Defender&seasons={{urlquery .Season}}",
 ))
@@ -95,6 +92,7 @@ type ubiTeamRolesJSON struct {
 type teamRoleStatsType string
 
 const (
+	typeGeneralized teamRoleStatsType = "Generalized"
 	typeSeasonal    teamRoleStatsType = "Seasonal"
 	typeMovingPoint teamRoleStatsType = "Moving Point Average Trend"
 )
@@ -116,7 +114,7 @@ func (u *ubiTypedTeamRoleJSON) UnmarshalJSON(data []byte) error {
 	}
 
 	switch typed.Type {
-	case typeSeasonal:
+	case typeGeneralized, typeSeasonal:
 		u.Value = new(ubiDetailedStatsJSON)
 	case typeMovingPoint:
 		u.Value = new(ubiMovingTrendJSON)
