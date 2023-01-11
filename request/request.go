@@ -55,7 +55,7 @@ func JSON(r *http.Request, dst any) (err error) {
 func checkForErrors(data []byte) error {
 	var errData ubiErrResp
 	if err := json.Unmarshal(data, &errData); err != nil {
-		return err
+		return errors.New("no further information available")
 	}
 	errs := []string{errData.Message, errData.Error, errData.ErrorCode.String()}
 	for _, errContent := range errs {
