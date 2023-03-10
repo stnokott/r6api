@@ -2,6 +2,7 @@ package auth
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"time"
 )
@@ -38,9 +39,7 @@ func (t *Ticket) Save() (err error) {
 	}
 
 	defer func() {
-		if cerr := file.Close(); err == nil {
-			err = cerr
-		}
+		err = errors.Join(err, file.Close())
 	}()
 
 	_, err = file.Write(data)
@@ -73,9 +72,7 @@ func LoadTicket() (t *Ticket, err error) {
 	}
 
 	defer func() {
-		if cerr := file.Close(); err == nil {
-			err = cerr
-		}
+		err = errors.Join(err, file.Close())
 	}()
 
 	t = new(Ticket)
