@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -194,10 +195,7 @@ func (a *R6API) GetMetadata() (m *metadata.Metadata, err error) {
 	}
 
 	defer func() {
-		errClose := body.Close()
-		if err == nil {
-			err = errClose
-		}
+		err = errors.Join(err, body.Close())
 	}()
 
 	var doc *goquery.Document
