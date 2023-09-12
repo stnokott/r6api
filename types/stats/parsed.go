@@ -60,6 +60,7 @@ func (l *statsLoader[TGameMode, TJSON]) loadRawStats(data []byte, dst Provider, 
 			return fmt.Errorf("got invalid game mode: %s", gameModes[i])
 		}
 		if err = loadTeamRoles(jsn, stats); err != nil {
+			err = fmt.Errorf("could not load team roles for game mode %s: %w", gameModes[i], err)
 			return
 		}
 	}
@@ -166,7 +167,7 @@ func (s *MapStats) AggregationType() string {
 }
 
 func (s *MapStats) ViewType() string {
-	return "seasonal"
+	return "current"
 }
 
 func (s *MapStats) UnmarshalJSON(data []byte) (err error) {
@@ -177,7 +178,7 @@ func (s *MapStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *map[string]NamedMa
 	inputTeamRole := jsn.TeamRoles.All
 
 	if len(inputTeamRole) == 0 {
-		return errors.New("no input data for ALL team role")
+		return errors.New("no input data for team role 'ALL'")
 	}
 	mapStats := map[string]NamedMapStatDetails{}
 	for _, mapData := range inputTeamRole {
