@@ -60,6 +60,7 @@ func (l *statsLoader[TGameMode, TJSON]) loadRawStats(data []byte, dst Provider, 
 			return fmt.Errorf("got invalid game mode: %s", gameModes[i])
 		}
 		if err = loadTeamRoles(jsn, stats); err != nil {
+			err = fmt.Errorf("could not load team roles for game mode %s: %w", gameModes[i], err)
 			return
 		}
 	}
@@ -73,7 +74,6 @@ Summarized stats
 // SummarizedStats provides stats without any specific aggregation.
 type SummarizedStats struct {
 	statsLoader[SummarizedGameModeStats, ubiTeamRolesJSON]
-	SeasonSlug string
 }
 
 type SummarizedGameModeStats struct {
@@ -113,9 +113,6 @@ func (s *SummarizedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *SummarizedG
 			return
 		}
 		*outputTeamRoles[i] = newDetailedStats(data)
-		if s.SeasonSlug == "" {
-			s.SeasonSlug = assembleSeasonSlug(data.ubiSeasonInfo)
-		}
 
 		if stats.matchStats.MatchesPlayed == 0 {
 			stats.matchStats = newMatchStats(data)
@@ -152,7 +149,6 @@ Map stats
 // MapStats provides stats aggregated by map.
 type MapStats struct {
 	statsLoader[map[string]NamedMapStatDetails, ubiTeamRolesJSON]
-	SeasonSlug string
 }
 
 type NamedMapStatDetails struct {
@@ -166,7 +162,7 @@ func (s *MapStats) AggregationType() string {
 }
 
 func (s *MapStats) ViewType() string {
-	return "seasonal"
+	return "current"
 }
 
 func (s *MapStats) UnmarshalJSON(data []byte) (err error) {
@@ -177,7 +173,7 @@ func (s *MapStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *map[string]NamedMa
 	inputTeamRole := jsn.TeamRoles.All
 
 	if len(inputTeamRole) == 0 {
-		return errors.New("no input data for ALL team role")
+		return errors.New("no input data for team role 'ALL'")
 	}
 	mapStats := map[string]NamedMapStatDetails{}
 	for _, mapData := range inputTeamRole {
@@ -194,9 +190,6 @@ func (s *MapStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *map[string]NamedMa
 			DetailedStats: *newDetailedStats(data),
 			matchStats:    newMatchStats(data),
 		}
-		if s.SeasonSlug == "" {
-			s.SeasonSlug = assembleSeasonSlug(data.ubiSeasonInfo)
-		}
 	}
 	*stats = mapStats
 
@@ -210,7 +203,6 @@ Bombsite stats
 // BombsiteStats provides stats aggregated by map.
 type BombsiteStats struct {
 	statsLoader[BombsiteGamemodeStats, ubiTeamRolesJSON]
-	SeasonSlug string
 }
 
 type BombsiteGamemodeStats struct {
@@ -645,21 +637,8 @@ func newTotalDetailedTeamRoleStats(data []ubiTypedTeamRoleJSON) (*DetailedStats,
 	return v, nil
 }
 
-func assembleSeasonSlug(v ubiSeasonInfo) string {
-	year := "??"
-	number := "??"
-	if v.SeasonYear != nil {
-		year = *v.SeasonYear
-	}
-	if v.SeasonNumber != nil {
-		number = *v.SeasonNumber
-	}
-	return year + number
-}
-
 type NamedStats struct {
 	statsLoader[NamedTeamRoles, ubiTeamRolesJSON]
-	SeasonSlug string
 }
 
 type NamedTeamRoleStats map[string]DetailedStats
@@ -706,9 +685,6 @@ func (s *NamedStats) loadTeamRole(jsn *ubiTeamRolesJSON, stats *NamedTeamRoles) 
 				name = *data.StatsDetail
 			}
 			resultTeamRoleData[name] = *newDetailedStats(data)
-			if s.SeasonSlug == "" {
-				s.SeasonSlug = assembleSeasonSlug(data.ubiSeasonInfo)
-			}
 		}
 		*resultFields[i] = resultTeamRoleData
 	}
